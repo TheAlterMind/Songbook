@@ -32,39 +32,58 @@ export default function DetailScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.iconBtn}
+        >
           <BackChevronIcon color={colors.text} size={18} />
         </TouchableOpacity>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={{ fontSize: 16, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flex: 1, minWidth: 0, paddingVertical: 6 }}>
+          <Text style={{ fontSize: 21, fontWeight: '600', color: colors.text }} numberOfLines={1}>
             {song.title}
           </Text>
-          <Text style={{ fontSize: 12, color: colors.neutral500 }}>{song.artist}</Text>
-        </View>
-        <TouchableOpacity onPress={() => navigation.navigate('AddToCollection', { songId })} style={{ padding: 6 }}>
-          <CollectionsTabIcon color={colors.accent} size={17} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={toggleFav} style={{ padding: 6 }}>
+        <TouchableOpacity
+          onPress={() => navigation.navigate('AddToCollection', { songId })}
+          style={styles.iconBtn}
+        >
+          <CollectionsTabIcon color={colors.accent} size={18} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={toggleFav} style={styles.iconBtn}>
           <StarIcon color={song.favorite ? colors.accent : colors.neutral500} filled={!!song.favorite} size={19} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Edit', { songId })} style={{ padding: 6 }}>
-          <EditPencilIcon color={colors.accent} size={17} />
+        <TouchableOpacity
+          onPress={() => navigation.navigate('Edit', { songId })}
+          style={styles.iconBtn}
+        >
+          <EditPencilIcon color={colors.accent} size={18} />
         </TouchableOpacity>
       </View>
 
       <View style={styles.toolbar}>
         <View style={{ flexDirection: 'row', gap: 10 }}>
-          <TouchableOpacity onPress={() => setFontSize((f) => Math.max(14, f - 1))} style={[styles.smallBtn, { borderColor: colors.divider }]}>
-            <Text style={{ color: colors.text, fontSize: 12 }}>A−</Text>
+          <TouchableOpacity
+            onPress={() => setFontSize((f) => Math.max(16, f - 1))}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={[styles.smallBtn, { flex: 1, borderColor: colors.divider }]}
+          >
+            <Text style={{ color: colors.accent, fontSize: 14 }}>A−</Text>
           </TouchableOpacity>
-          <TouchableOpacity onPress={() => setFontSize((f) => Math.min(28, f + 1))} style={[styles.smallBtn, { borderColor: colors.divider }]}>
-            <Text style={{ color: colors.text, fontSize: 15 }}>A+</Text>
+          <TouchableOpacity
+            onPress={() => setFontSize((f) => Math.min(30, f + 1))}
+            hitSlop={{ top: 8, bottom: 8 }}
+            style={[styles.smallBtn, { flex: 1, borderColor: colors.divider }]}
+          >
+            <Text style={{ color: colors.accent, fontSize: 17 }}>A+</Text>
           </TouchableOpacity>
         </View>
         {hasChords && (
           <TouchableOpacity
             onPress={() => setChordsOn((v) => !v)}
             style={{
+              marginTop: 10,
+              alignSelf: 'flex-start',
               paddingVertical: 5,
               paddingHorizontal: 12,
               borderRadius: 20,
@@ -73,7 +92,7 @@ export default function DetailScreen() {
               backgroundColor: chordsOn ? colors.accent + '22' : 'transparent',
             }}
           >
-            <Text style={{ fontSize: 12, color: chordsOn ? colors.accent : colors.neutral500 }}>Chords {chordsOn ? 'On' : 'Off'}</Text>
+            <Text style={{ fontSize: 14, color: chordsOn ? colors.accent : colors.neutral500 }}>Chords {chordsOn ? 'On' : 'Off'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -93,7 +112,8 @@ export default function DetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 4 },
-  toolbar: { paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  smallBtn: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  iconBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  toolbar: { paddingHorizontal: 20, marginTop: 4 },
+  smallBtn: { width: 48, height: 36, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

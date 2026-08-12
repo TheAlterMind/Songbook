@@ -33,9 +33,9 @@ export default function AddToCollectionScreen() {
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={{ paddingTop: 54, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: colors.accent, fontSize: 15, fontWeight: '600' }}>Done</Text>
+          <Text style={{ color: colors.accent, fontSize: 17, fontWeight: '600' }}>Done</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontSize: 15, fontWeight: '600' }}>
+        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontSize: 17, fontWeight: '600' }}>
           Add to collection
         </Text>
         <View style={{ width: 44 }} />
@@ -63,8 +63,8 @@ export default function AddToCollectionScreen() {
                 alignItems: 'center',
               }}
             >
-              <Text style={{ fontSize: 15, color: colors.text }}>{item.name}</Text>
-              <Text style={{ color: checked ? colors.accent : colors.neutral500, fontSize: 16 }}>
+              <Text style={{ fontSize: 17, color: colors.text }}>{item.name}</Text>
+              <Text style={{ color: checked ? colors.accent : colors.neutral500, fontSize: 18 }}>
                 {checked ? '\u2713' : '\u25CB'}
               </Text>
             </TouchableOpacity>

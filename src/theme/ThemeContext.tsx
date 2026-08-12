@@ -17,7 +17,7 @@ export type Settings = {
 const DEFAULT_SETTINGS: Settings = {
   accentColor: ACCENT_OPTIONS[0].value,
   lightMode: false,
-  defaultFontSize: 17,
+  defaultFontSize: 19,
   defaultChordsOn: false,
   sortBy: 'title',
   sortDir: 'asc',

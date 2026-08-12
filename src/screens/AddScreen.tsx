@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { addSong } from '../db/Database';
@@ -30,7 +30,7 @@ export default function AddScreen() {
   const onCancel = () => navigation.goBack();
 
   const onSave = async () => {
-    const lines = pasteText.split('\n').filter((l) => l.trim().length > 0);
+    const rawLines = pasteText.trim() ? pasteText.split('\n') : ['(no lyrics pasted yet)'];
     const id = await addSong({
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown Artist',
@@ -41,7 +41,7 @@ export default function AddScreen() {
       year,
       key,
       favorite: false,
-      lines: (lines.length ? lines : ['(no lyrics pasted yet)']).map((text) => ({ text, chord: '' })),
+      lines: rawLines.map((text) => ({ text, chord: '' })),
     });
     navigation.replace('Detail', { songId: id });
   };
@@ -57,9 +57,14 @@ export default function AddScreen() {
           <Text style={{ color: colors.accent, fontWeight: '600' }}>Save</Text>
         </TouchableOpacity>
       </View>
-      <ScrollView contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 60 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
+      >
+        <ScrollView contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 220 }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 12, color: colors.neutral500 }}>Paste lyrics</Text>
+          <Text style={{ fontSize: 14, color: colors.neutral500 }}>Paste lyrics</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('WebSearch')}
             style={{
@@ -74,7 +79,7 @@ export default function AddScreen() {
             }}
           >
             <SearchIcon color={colors.accent} size={12} strokeWidth={2} />
-            <Text style={{ color: colors.accent, fontSize: 12 }}>Search the web</Text>
+            <Text style={{ color: colors.accent, fontSize: 14 }}>Search the web</Text>
           </TouchableOpacity>
         </View>
         <TextInput
@@ -135,6 +140,7 @@ export default function AddScreen() {
           />
         </Field>
       </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
@@ -142,7 +148,7 @@ export default function AddScreen() {
 function Field({ label, colors, children }: any) {
   return (
     <View style={{ gap: 5 }}>
-      <Text style={{ fontSize: 12, color: colors.neutral500 }}>{label}</Text>
+      <Text style={{ fontSize: 14, color: colors.neutral500 }}>{label}</Text>
       {children}
     </View>
   );
@@ -160,7 +166,7 @@ function Divider({ colors }: any) {
   return <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 4 }} />;
 }
 function inputStyle(colors: any, radius: any) {
-  return { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, padding: 10, color: colors.text, fontSize: 14 };
+  return { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, padding: 10, color: colors.text, fontSize: 16 };
 }
 
 const styles = StyleSheet.create({

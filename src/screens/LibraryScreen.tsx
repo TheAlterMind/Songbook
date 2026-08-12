@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, Pressable } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { getAllSongs, setFavorite, deleteSong, duplicateSong, Song } from '../db/Database';
@@ -10,6 +10,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation<any>();
   const { colors, radius, settings, updateSettings } = useTheme();
   const [songs, setSongs] = useState<Song[]>([]);
+  const [sortMenuOpen, setSortMenuOpen] = useState(false);
 
   const load = useCallback(async () => {
     setSongs(await getAllSongs());
@@ -26,11 +27,6 @@ export default function LibraryScreen() {
     [songs, settings.sortBy, settings.sortDir]
   );
 
-  const cycleSortBy = () => {
-    const order = SORT_OPTIONS.map((o) => o.value);
-    const i = order.indexOf(settings.sortBy);
-    updateSettings({ sortBy: order[(i + 1) % order.length] });
-  };
   const toggleSortDir = () => updateSettings({ sortDir: settings.sortDir === 'asc' ? 'desc' : 'asc' });
   const toggleViewMode = () => updateSettings({ viewMode: settings.viewMode === 'expanded' ? 'compact' : 'expanded' });
 
@@ -66,23 +62,52 @@ export default function LibraryScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={styles.headerRow}>
-        <Text style={[styles.h1, { color: colors.text }]}>Lyrics Library</Text>
+        <Text style={[styles.h1, { color: colors.text }]}>Songbook</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          <TouchableOpacity onPress={toggleViewMode} style={[styles.iconBtn, { borderColor: colors.accent }]}>
+          <TouchableOpacity onPress={toggleViewMode} style={styles.iconBtn}>
             {isExpanded ? <ExpandedViewIcon color={colors.accent} size={16} /> : <CompactViewIcon color={colors.accent} size={16} />}
           </TouchableOpacity>
         </View>
       </View>
 
       <View style={styles.sortRow}>
-        <Text style={{ fontSize: 12, color: colors.neutral500 }}>Sorted by:</Text>
-        <TouchableOpacity onPress={cycleSortBy}>
-          <Text style={{ fontSize: 13, fontWeight: '600', color: colors.accent, marginLeft: 6 }}>{sortLabel}</Text>
+        <TouchableOpacity
+          onPress={() => setSortMenuOpen(true)}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingRight: 12 }}
+        >
+          <Text style={{ fontSize: 14, color: colors.neutral500 }}>Sorted by:</Text>
+          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.accent, marginLeft: 6 }}>{sortLabel}</Text>
         </TouchableOpacity>
-        <TouchableOpacity onPress={toggleSortDir} style={{ marginLeft: 6, padding: 4 }}>
-          {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} /> : <SortDownIcon color={colors.accent} />}
+        <TouchableOpacity onPress={toggleSortDir} style={styles.iconBtn}>
+          {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} size={16} /> : <SortDownIcon color={colors.accent} size={16} />}
         </TouchableOpacity>
       </View>
+
+      <Modal visible={sortMenuOpen} transparent animationType="fade" onRequestClose={() => setSortMenuOpen(false)}>
+        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuOpen(false)}>
+          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
+            {SORT_OPTIONS.map((opt) => {
+              const selected = opt.value === settings.sortBy;
+              return (
+                <TouchableOpacity
+                  key={opt.value}
+                  onPress={() => {
+                    updateSettings({ sortBy: opt.value });
+                    setSortMenuOpen(false);
+                  }}
+                  style={[styles.modalRow, { borderBottomColor: colors.divider }]}
+                >
+                  <Text style={{ fontSize: 15, color: selected ? colors.accent : colors.text, fontWeight: selected ? '600' : '400' }}>
+                    {opt.label}
+                  </Text>
+                  {selected && <Text style={{ color: colors.accent, fontSize: 15 }}>{'\u2713'}</Text>}
+                </TouchableOpacity>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
 
       <FlatList
         data={sorted}
@@ -98,12 +123,12 @@ export default function LibraryScreen() {
             style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: isExpanded ? 12 : 11 }]}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }} numberOfLines={1}>
                 {item.title}
               </Text>
               {isExpanded && (
                 <>
-                  <Text style={{ fontSize: 12, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
                     {item.artist}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
@@ -146,7 +171,7 @@ function Tag({ label, accent, colors, radius }: any) {
         backgroundColor: accent ? colors.accent : colors.neutral800,
       }}
     >
-      <Text style={{ fontSize: 11, color: accent ? colors.accent100 : colors.text }}>{label}</Text>
+      <Text style={{ fontSize: 13, color: accent ? colors.accent100 : colors.text }}>{label}</Text>
     </View>
   );
 }
@@ -161,9 +186,16 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  h1: { fontSize: 28, fontWeight: '700' },
-  iconBtn: { width: 36, height: 36, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  sortRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, marginTop: 10, marginBottom: 4 },
+  h1: { fontSize: 30, fontWeight: '700' },
+  iconBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  sortRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    marginTop: 14,
+    marginBottom: 8,
+  },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   fab: {
     position: 'absolute',
@@ -175,5 +207,25 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalCard: {
+    width: '80%',
+    borderRadius: 12,
+    paddingVertical: 4,
+    overflow: 'hidden',
+  },
+  modalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 18,
+    borderBottomWidth: 1,
   },
 });

@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Lyrics Library — Bulk Add Tool</title>
+<style>
+  :root {
+    --bg: #161826;
+    --surface: #232532;
+    --surface-2: #2b2d3d;
+    --text: #e9e9ed;
+    --muted: #9397ab;
+    --divider: rgba(233,233,237,0.14);
+    --accent: #9184d9;
+    --danger: #c0656b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    min-height: 100vh;
+  }
+  .wrap {
+    max-width: 980px;
+    margin: 0 auto;
+    padding: 32px 20px 80px;
+  }
+  h1 { font-size: 24px; font-weight: 700; margin: 0 0 4px; }
+  .sub { color: var(--muted); font-size: 14px; margin: 0 0 24px; line-height: 1.5; }
+  .steps {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 10px;
+    padding: 16px 18px;
+    margin-bottom: 28px;
+    font-size: 13px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .steps b { color: var(--text); }
+  .grid { display: grid; grid-template-columns: 1.1fr 0.9fr; gap: 24px; }
+  @media (max-width: 800px) { .grid { grid-template-columns: 1fr; } }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--divider);
+    border-radius: 12px;
+    padding: 20px;
+  }
+  .card h2 {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    margin: 0 0 16px;
+  }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 14px 0 5px; }
+  label:first-of-type { margin-top: 0; }
+  input, textarea {
+    width: 100%;
+    background: var(--surface-2);
+    border: 1px solid var(--divider);
+    border-radius: 8px;
+    padding: 9px 11px;
+    color: var(--text);
+    font-size: 14px;
+    font-family: inherit;
+  }
+  textarea { resize: vertical; min-height: 140px; line-height: 1.5; }
+  .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .btn {
+    border: none;
+    border-radius: 8px;
+    padding: 11px 18px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .btn-primary { background: var(--accent); color: #17151f; }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-outline { background: transparent; border: 1px solid var(--divider); color: var(--text); }
+  .btn-full { width: 100%; margin-top: 18px; }
+  .batch-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--surface-2);
+    border-radius: 8px;
+    padding: 10px 12px;
+    margin-bottom: 8px;
+  }
+  .batch-item .meta { min-width: 0; }
+  .batch-item .t { font-size: 14px; font-weight: 600; }
+  .batch-item .a { font-size: 12px; color: var(--muted); margin-top: 1px; }
+  .batch-item button { background: none; border: none; color: var(--danger); font-size: 13px; cursor: pointer; padding: 4px 6px; }
+  .empty { color: var(--muted); font-size: 13px; text-align: center; padding: 24px 0; }
+  .count { font-size: 13px; color: var(--muted); margin-bottom: 14px; }
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: var(--accent);
+    color: #17151f;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s, transform 0.2s;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* Per-line chord editor */
+  .chord-section-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-top: 16px;
+  }
+  .chord-hint { font-size: 11px; color: var(--muted); margin-bottom: 8px; line-height: 1.5; }
+  .line-row { margin-bottom: 6px; }
+  .chord-input {
+    width: 100%;
+    font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+    font-size: 13px;
+    padding: 4px 6px;
+    border: 1px solid var(--divider);
+    border-radius: 4px;
+    color: var(--accent);
+    background: var(--surface-2);
+    margin-bottom: 2px;
+  }
+  .line-body { display: flex; align-items: center; gap: 8px; }
+  .line-text {
+    font-family: "Cascadia Mono", Consolas, "Courier New", monospace;
+    font-size: 13px;
+    color: var(--text);
+    flex: 1;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .chord-toggle {
+    background: none;
+    border: none;
+    color: var(--accent);
+    font-size: 11px;
+    cursor: pointer;
+    white-space: nowrap;
+    padding: 2px 4px;
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Lyrics Library — Bulk Add Tool</h1>
+    <p class="sub">Fill in a song, add it to the batch, repeat as many times as you like, then download one file to import into the app.</p>
+
+    <div class="steps">
+      <b>1.</b> Fill in the form and click <b>Add to batch</b> for each song.<br>
+      <b>2.</b> When you're done, click <b>Download JSON</b>.<br>
+      <b>3.</b> Get that file onto your phone — USB cable, a cloud drive, or emailing it to yourself all work.<br>
+      <b>4.</b> In the app: <b>Settings → Import from file</b>, then pick it. Songs already in your library (matched by title + artist) are skipped automatically.
+    </div>
+
+    <div class="grid">
+      <div class="card">
+        <h2>Add a song</h2>
+
+        <label for="title">Title *</label>
+        <input id="title" placeholder="Song title" />
+
+        <div class="row2">
+          <div>
+            <label for="artist">Artist *</label>
+            <input id="artist" placeholder="Artist" />
+          </div>
+          <div>
+            <label for="album">Album</label>
+            <input id="album" placeholder="Album" />
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="genre">Genre</label>
+            <input id="genre" placeholder="Genre" />
+          </div>
+          <div>
+            <label for="mood">Mood</label>
+            <input id="mood" placeholder="Mood" />
+          </div>
+        </div>
+
+        <div class="row2">
+          <div>
+            <label for="language">Language</label>
+            <input id="language" placeholder="English" />
+          </div>
+          <div>
+            <label for="year">Year</label>
+            <input id="year" placeholder="Year" inputmode="numeric" />
+          </div>
+        </div>
+
+        <label for="key">Key</label>
+        <input id="key" placeholder="e.g. G, Am" />
+
+        <label for="lyrics">Lyrics *</label>
+        <textarea id="lyrics" placeholder="Paste the full lyrics here…"></textarea>
+
+        <div class="chord-section-label">
+          <label style="margin:0;">Chords (optional)</label>
+        </div>
+        <div class="chord-hint">
+          Tap <b style="color:var(--text)">+ Chord</b> on any line below to add a chord row directly above it, then type using spaces to line it up over the word — exactly like editing a song in the app.
+        </div>
+        <div id="lineEditor"></div>
+
+        <button class="btn btn-primary btn-full" id="addBtn">Add to batch</button>
+      </div>
+
+      <div class="card">
+        <h2>Batch</h2>
+        <div class="count" id="count">0 songs added</div>
+        <div id="list"></div>
+        <button class="btn btn-primary btn-full" id="downloadBtn" disabled>Download JSON</button>
+        <button class="btn btn-outline btn-full" id="clearBtn" style="margin-top:8px;">Clear batch</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    let batch = [];
+    let chordRows = {}; // { [lineIndex]: chordString }
+
+    const els = {
+      title: document.getElementById('title'),
+      artist: document.getElementById('artist'),
+      album: document.getElementById('album'),
+      genre: document.getElementById('genre'),
+      mood: document.getElementById('mood'),
+      language: document.getElementById('language'),
+      year: document.getElementById('year'),
+      key: document.getElementById('key'),
+      lyrics: document.getElementById('lyrics'),
+    };
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.classList.add('show');
+      setTimeout(() => t.classList.remove('show'), 1600);
+    }
+
+    function escapeHtml(str) {
+      const div = document.createElement('div');
+      div.textContent = str;
+      return div.innerHTML;
+    }
+
+    // ---- Per-line chord editor (mirrors the app's EditScreen exactly) ----
+
+    function currentLyricsLines() {
+      return els.lyrics.value.split('\n');
+    }
+
+    function renderLineEditor() {
+      const container = document.getElementById('lineEditor');
+      const lines = currentLyricsLines();
+      container.innerHTML = '';
+
+      lines.forEach((text, idx) => {
+        if (!text.trim()) return; // skip blank lines, same as the app
+
+        const row = document.createElement('div');
+        row.className = 'line-row';
+
+        const has = Object.prototype.hasOwnProperty.call(chordRows, idx);
+
+        if (has) {
+          const chordInput = document.createElement('input');
+          chordInput.className = 'chord-input';
+          chordInput.value = chordRows[idx] || '';
+          chordInput.placeholder = '  G      D';
+          chordInput.addEventListener('input', (e) => {
+            chordRows[idx] = e.target.value; // update state only, no re-render — keeps focus
+          });
+          row.appendChild(chordInput);
+        }
+
+        const body = document.createElement('div');
+        body.className = 'line-body';
+
+        const lineText = document.createElement('div');
+        lineText.className = 'line-text';
+        lineText.textContent = text;
+        body.appendChild(lineText);
+
+        const toggle = document.createElement('button');
+        toggle.className = 'chord-toggle';
+        toggle.textContent = has ? 'Remove chord' : '+ Chord';
+        toggle.addEventListener('click', () => {
+          if (has) {
+            delete chordRows[idx];
+          } else {
+            chordRows[idx] = '';
+          }
+          renderLineEditor(); // structure changed — safe to fully re-render
+        });
+        body.appendChild(toggle);
+
+        row.appendChild(body);
+        container.appendChild(row);
+      });
+    }
+
+    els.lyrics.addEventListener('input', () => {
+      // Lyrics text changed — line indices may now mean something different,
+      // same trade-off the app itself accepts. Re-render to match new line count.
+      renderLineEditor();
+    });
+
+    // ---- Batch list ----
+
+    function render() {
+      const list = document.getElementById('list');
+      const count = document.getElementById('count');
+      const downloadBtn = document.getElementById('downloadBtn');
+
+      count.textContent = batch.length + (batch.length === 1 ? ' song added' : ' songs added');
+      downloadBtn.disabled = batch.length === 0;
+
+      if (batch.length === 0) {
+        list.innerHTML = '<div class="empty">No songs added yet.</div>';
+        return;
+      }
+
+      list.innerHTML = batch.map((s, i) => `
+        <div class="batch-item">
+          <div class="meta">
+            <div class="t">${escapeHtml(s.title)}</div>
+            <div class="a">${escapeHtml(s.artist)}</div>
+          </div>
+          <button data-idx="${i}" class="remove-btn">Remove</button>
+        </div>
+      `).join('');
+
+      list.querySelectorAll('.remove-btn').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.getAttribute('data-idx'));
+          batch.splice(idx, 1);
+          render();
+        });
+      });
+    }
+
+    document.getElementById('addBtn').addEventListener('click', () => {
+      const title = els.title.value.trim();
+      const artist = els.artist.value.trim();
+      const lyrics = els.lyrics.value;
+
+      if (!title || !artist || !lyrics.trim()) {
+        showToast('Title, artist, and lyrics are required.');
+        return;
+      }
+
+      const lyricsLines = currentLyricsLines();
+      const lines = lyricsLines
+        .map((text, i) => ({ text, chord: (chordRows[i] || '').trim() }))
+        .filter((l) => l.text.trim().length > 0);
+
+      batch.push({
+        title,
+        artist,
+        album: els.album.value.trim(),
+        genre: els.genre.value.trim(),
+        mood: els.mood.value.trim(),
+        language: els.language.value.trim(),
+        year: els.year.value.trim(),
+        key: els.key.value.trim(),
+        favorite: false,
+        lines,
+      });
+
+      // Clear the form (keep Language, since it's often the same across a batch)
+      els.title.value = '';
+      els.artist.value = '';
+      els.album.value = '';
+      els.genre.value = '';
+      els.mood.value = '';
+      els.year.value = '';
+      els.key.value = '';
+      els.lyrics.value = '';
+      chordRows = {};
+      renderLineEditor();
+      els.title.focus();
+
+      render();
+      showToast('Added to batch');
+    });
+
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      if (batch.length === 0) return;
+      if (confirm('Clear all ' + batch.length + ' songs from the batch? This cannot be undone.')) {
+        batch = [];
+        render();
+      }
+    });
+
+    document.getElementById('downloadBtn').addEventListener('click', () => {
+      const payload = {
+        songs: batch,
+        collections: [],
+        links: [],
+        exportedAt: Date.now(),
+        version: 1,
+      };
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `lyrics-library-import-${stamp}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Downloaded');
+    });
+
+    renderLineEditor();
+    render();
+  </script>
+</body>
+</html>

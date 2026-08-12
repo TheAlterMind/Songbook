@@ -32,7 +32,7 @@ export default function CollectionDetailScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6 }}>
           <BackChevronIcon color={colors.text} size={18} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 22, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
+        <Text style={{ fontSize: 24, fontWeight: '700', color: colors.text, flex: 1 }} numberOfLines={1}>
           {name}
         </Text>
       </View>
@@ -48,8 +48,8 @@ export default function CollectionDetailScreen() {
             onPress={() => navigation.navigate('Detail', { songId: item.id })}
             style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 14 }}
           >
-            <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{item.title}</Text>
-            <Text style={{ fontSize: 12, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
+            <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>{item.title}</Text>
+            <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
           </TouchableOpacity>
         )}
       />

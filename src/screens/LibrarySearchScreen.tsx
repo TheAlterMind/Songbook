@@ -19,7 +19,7 @@ export default function LibrarySearchScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={{ paddingTop: 54, paddingHorizontal: 20 }}>
-        <Text style={{ fontSize: 28, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Search</Text>
+        <Text style={{ fontSize: 30, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Search</Text>
         <View
           style={{
             flexDirection: 'row',
@@ -62,8 +62,8 @@ export default function LibrarySearchScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 15, fontWeight: '600', color: colors.text }}>{item.title}</Text>
-              <Text style={{ fontSize: 12, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
+              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>{item.title}</Text>
+              <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
             </View>
             <ChevronRightIcon color={colors.neutral500} size={14} />
           </TouchableOpacity>
