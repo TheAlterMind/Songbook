@@ -1,4 +1,14 @@
 import * as SQLite from 'expo-sqlite';
+import { readLyricsProvenance, songContentKey, validateBackup, validateLyricsProvenance } from './backup';
+
+export interface LyricsProvenance {
+  provider: string;
+  providerSongId: string;
+  sourceUrl?: string;
+  attribution?: { name: string; text?: string; url?: string };
+  retrievedAt: number;
+  modifiedSinceImport?: boolean;
+}
 
 export interface SongLine {
   text: string;
@@ -18,6 +28,7 @@ export interface Song {
   favorite?: boolean;
   lines: SongLine[];
   createdAt?: number;
+  lyricsSource?: LyricsProvenance;
 }
 
 export interface Collection {
@@ -26,13 +37,14 @@ export interface Collection {
   createdAt?: number;
 }
 
-let db: SQLite.SQLiteDatabase | null = null;
+let dbPromise: Promise<SQLite.SQLiteDatabase> | null = null;
 
-export async function getDb() {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync('lyrics_library_v2.db');
-    await db.execAsync(`
-      PRAGMA journal_mode = WAL;
+async function initializeDatabase(): Promise<SQLite.SQLiteDatabase> {
+  const database = await SQLite.openDatabaseAsync('lyrics_library_v2.db');
+  try {
+    await database.execAsync('PRAGMA journal_mode = WAL;');
+    await database.withExclusiveTransactionAsync(async (txn) => {
+      await txn.execAsync(`
       CREATE TABLE IF NOT EXISTS songs (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
@@ -45,7 +57,8 @@ export async function getDb() {
         key TEXT,
         favorite INTEGER NOT NULL DEFAULT 0,
         linesJson TEXT NOT NULL,
-        createdAt INTEGER NOT NULL
+        createdAt INTEGER NOT NULL,
+        lyricsSourceJson TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
       CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist);
@@ -61,9 +74,31 @@ export async function getDb() {
         song_id INTEGER NOT NULL,
         PRIMARY KEY (collection_id, song_id)
       );
-    `);
+      `);
+      const version = await txn.getFirstAsync<{ user_version: number }>('PRAGMA user_version');
+      if ((version?.user_version ?? 0) < 1) {
+        const columns = await txn.getAllAsync<{ name: string }>('PRAGMA table_info(songs)');
+        if (!columns.some((column) => column.name === 'lyricsSourceJson')) {
+          await txn.execAsync('ALTER TABLE songs ADD COLUMN lyricsSourceJson TEXT;');
+        }
+        await txn.execAsync('PRAGMA user_version = 1;');
+      }
+    });
+    return database;
+  } catch (error) {
+    await database.closeAsync().catch(() => undefined);
+    throw error;
   }
-  return db;
+}
+
+export function getDb(): Promise<SQLite.SQLiteDatabase> {
+  if (!dbPromise) {
+    dbPromise = initializeDatabase().catch((error) => {
+      dbPromise = null;
+      throw error;
+    });
+  }
+  return dbPromise;
 }
 
 function rowToSong(row: any): Song {
@@ -80,14 +115,15 @@ function rowToSong(row: any): Song {
     favorite: !!row.favorite,
     lines: JSON.parse(row.linesJson || '[]'),
     createdAt: row.createdAt,
+    lyricsSource: readLyricsProvenance(row.lyricsSourceJson),
   };
 }
 
-export async function addSong(song: Song): Promise<number> {
-  const database = await getDb();
+async function insertSong(database: Pick<SQLite.SQLiteDatabase, 'runAsync'>, song: Song): Promise<number> {
+  const source = validateLyricsProvenance(song.lyricsSource);
   const result = await database.runAsync(
-    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, lyricsSourceJson)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -98,15 +134,21 @@ export async function addSong(song: Song): Promise<number> {
     song.key ?? '',
     song.favorite ? 1 : 0,
     JSON.stringify(song.lines || []),
-    Date.now()
+    song.createdAt ?? Date.now(),
+    source ? JSON.stringify(source) : null
   );
   return result.lastInsertRowId as number;
 }
 
+export async function addSong(song: Song): Promise<number> {
+  return insertSong(await getDb(), song);
+}
+
 export async function updateSong(song: Song): Promise<void> {
   const database = await getDb();
+  const source = validateLyricsProvenance(song.lyricsSource);
   await database.runAsync(
-    `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=? WHERE id=?`,
+    `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=?, lyricsSourceJson=? WHERE id=?`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -117,6 +159,7 @@ export async function updateSong(song: Song): Promise<void> {
     song.key ?? '',
     song.favorite ? 1 : 0,
     JSON.stringify(song.lines || []),
+    source ? JSON.stringify(source) : null,
     song.id as number
   );
 }
@@ -128,8 +171,10 @@ export async function setFavorite(id: number, favorite: boolean): Promise<void> 
 
 export async function deleteSong(id: number): Promise<void> {
   const database = await getDb();
-  await database.runAsync('DELETE FROM songs WHERE id=?', id);
-  await database.runAsync('DELETE FROM collection_songs WHERE song_id=?', id);
+  await database.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync('DELETE FROM collection_songs WHERE song_id=?', id);
+    await txn.runAsync('DELETE FROM songs WHERE id=?', id);
+  });
 }
 
 export async function getAllSongs(): Promise<Song[]> {
@@ -148,16 +193,11 @@ export async function duplicateSong(id: number): Promise<number | null> {
   const song = await getSong(id);
   if (!song) return null;
   return addSong({
+    ...song,
+    id: undefined,
+    createdAt: undefined,
     title: `${song.title} (Copy)`,
-    artist: song.artist,
-    album: song.album,
-    genre: song.genre,
-    mood: song.mood,
-    language: song.language,
-    year: song.year,
-    key: song.key,
     favorite: false,
-    lines: song.lines,
   });
 }
 
@@ -184,8 +224,10 @@ export async function addCollection(name: string): Promise<number> {
 
 export async function deleteCollection(id: number): Promise<void> {
   const database = await getDb();
-  await database.runAsync('DELETE FROM collections WHERE id=?', id);
-  await database.runAsync('DELETE FROM collection_songs WHERE collection_id=?', id);
+  await database.withExclusiveTransactionAsync(async (txn) => {
+    await txn.runAsync('DELETE FROM collection_songs WHERE collection_id=?', id);
+    await txn.runAsync('DELETE FROM collections WHERE id=?', id);
+  });
 }
 
 export async function getAllCollections(): Promise<Collection[]> {
@@ -235,58 +277,72 @@ export async function getSongsByIds(ids: number[]): Promise<Song[]> {
 // ---- Export / Import ----
 
 export async function getAllDataForExport() {
-  const songs = await getAllSongs();
-  const collections = await getAllCollections();
   const database = await getDb();
-  const links = await database.getAllAsync<{ collection_id: number; song_id: number }>(
-    'SELECT collection_id, song_id FROM collection_songs'
-  );
-  return { songs, collections, links, exportedAt: Date.now(), version: 1 };
+  const data = {
+    songs: [] as Song[],
+    collections: [] as Collection[],
+    links: [] as { collection_id: number; song_id: number }[],
+    exportedAt: Date.now(),
+    version: 2 as const,
+  };
+  await database.withExclusiveTransactionAsync(async (txn) => {
+    data.songs = (await txn.getAllAsync<any>('SELECT * FROM songs')).map(rowToSong);
+    data.collections = await txn.getAllAsync<Collection>('SELECT * FROM collections ORDER BY createdAt DESC');
+    data.links = await txn.getAllAsync<{ collection_id: number; song_id: number }>('SELECT collection_id, song_id FROM collection_songs');
+  });
+  return data;
 }
 
-export async function importData(data: {
-  songs: Song[];
-  collections: Collection[];
-  links: { collection_id: number; song_id: number }[];
-}) {
-  const existing = await getAllSongs();
-  const keyOf = (s: Song) => `${s.title.trim().toLowerCase()}|${s.artist.trim().toLowerCase()}`;
-  const existingKeys = new Set(existing.map(keyOf));
-
-  const oldIdToNewId = new Map<number, number>();
+export async function importData(value: unknown): Promise<{ imported: number; skipped: number }> {
+  // Validate everything before opening a write transaction. No partial restore
+  // should survive an invalid record or a failed database operation.
+  const data = validateBackup(value);
+  const database = await getDb();
   let imported = 0;
   let skipped = 0;
-
-  for (const song of data.songs || []) {
-    if (existingKeys.has(keyOf(song))) {
-      skipped++;
-      continue;
+  await database.withExclusiveTransactionAsync(async (txn) => {
+    const existing = (await txn.getAllAsync<any>('SELECT * FROM songs')).map(rowToSong);
+    const songsByContent = new Map(existing.map((song) => [songContentKey(song), song]));
+    const oldIdToNewId = new Map<number, number>();
+    for (const song of data.songs) {
+      const key = songContentKey(song);
+      const match = songsByContent.get(key);
+      let newId: number;
+      if (match) {
+        newId = match.id as number;
+        // An older/manual copy can acquire credits from a backup without
+        // replacing the local arrangement or existing source attribution.
+        if (!match.lyricsSource && song.lyricsSource) {
+          await txn.runAsync('UPDATE songs SET lyricsSourceJson=? WHERE id=?', JSON.stringify(song.lyricsSource), newId);
+          match.lyricsSource = song.lyricsSource;
+        }
+        skipped++;
+      } else {
+        newId = await insertSong(txn, song);
+        songsByContent.set(key, { ...song, id: newId });
+        imported++;
+      }
+      if (song.id != null) oldIdToNewId.set(song.id, newId);
     }
-    const newId = await addSong(song);
-    if (song.id != null) oldIdToNewId.set(song.id, newId);
-    imported++;
-  }
-
-  const existingCollections = await getAllCollections();
-  const collectionNameToId = new Map<string, number>();
-  existingCollections.forEach((c) => collectionNameToId.set(c.name, c.id as number));
-
-  for (const col of data.collections || []) {
-    if (!collectionNameToId.has(col.name)) {
-      const newId = await addCollection(col.name);
-      collectionNameToId.set(col.name, newId);
+    const collections = await txn.getAllAsync<Collection>('SELECT * FROM collections');
+    const collectionNameToId = new Map(collections.map((collection) => [collection.name, collection.id as number]));
+    const oldCollectionIdToNewId = new Map<number, number>();
+    for (const collection of data.collections) {
+      let newId = collectionNameToId.get(collection.name);
+      if (newId == null) {
+        const result = await txn.runAsync('INSERT INTO collections (name, createdAt) VALUES (?, ?)', collection.name, collection.createdAt ?? Date.now());
+        newId = result.lastInsertRowId;
+        collectionNameToId.set(collection.name, newId);
+      }
+      if (collection.id != null) oldCollectionIdToNewId.set(collection.id, newId);
     }
-  }
-
-  for (const link of data.links || []) {
-    const newSongId = oldIdToNewId.get(link.song_id);
-    if (newSongId == null) continue;
-    const col = (data.collections || []).find((c) => c.id === link.collection_id);
-    if (!col) continue;
-    const newCollectionId = collectionNameToId.get(col.name);
-    if (newCollectionId == null) continue;
-    await setSongInCollection(newCollectionId, newSongId, true);
-  }
-
+    for (const link of data.links) {
+      await txn.runAsync(
+        'INSERT OR IGNORE INTO collection_songs (collection_id, song_id) VALUES (?, ?)',
+        oldCollectionIdToNewId.get(link.collection_id) as number,
+        oldIdToNewId.get(link.song_id) as number
+      );
+    }
+  });
   return { imported, skipped };
 }

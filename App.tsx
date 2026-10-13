@@ -3,6 +3,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import LibraryScreen from './src/screens/LibraryScreen';
 import LibrarySearchScreen from './src/screens/LibrarySearchScreen';
@@ -16,9 +17,10 @@ import WebSearchScreen from './src/screens/WebSearchScreen';
 import BrowserScreen from './src/screens/BrowserScreen';
 import AddToCollectionScreen from './src/screens/AddToCollectionScreen';
 import { LibraryTabIcon, SearchTabIcon, CollectionsTabIcon, SettingsTabIcon } from './src/components/Icons';
+import type { RootStackParamList, TabParamList } from './src/types';
 
-const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
+const Stack = createNativeStackNavigator<RootStackParamList>();
+const Tab = createBottomTabNavigator<TabParamList>();
 
 function Tabs() {
   const { colors } = useTheme();
@@ -76,8 +78,10 @@ function RootNavigator() {
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <RootNavigator />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

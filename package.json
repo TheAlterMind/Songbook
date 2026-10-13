@@ -7,6 +7,7 @@
     "@react-navigation/bottom-tabs": "^7.18.16",
     "@react-navigation/native": "^7.3.15",
     "@react-navigation/native-stack": "^7.18.7",
+    "cheerio": "^1.2.0",
     "expo": "~57.0.11",
     "expo-clipboard": "~57.0.1",
     "expo-document-picker": "~57.0.1",
@@ -30,7 +31,11 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
-    "prebuild:android": "expo prebuild -p android && node scripts/fix-local-properties.js"
+    "prebuild:android": "expo prebuild -p android && node scripts/fix-local-properties.js",
+    "configure:genius": "node scripts/configure-genius.cjs",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test test/lyrics/*.test.* test/db/*.test.*",
+    "android:preview": "node scripts/build-preview.cjs"
   },
   "private": true
 }

@@ -106,9 +106,26 @@ export default function DetailScreen() {
             <Text style={{ fontSize, color: colors.text, lineHeight: fontSize * 1.5 }}>{line.text}</Text>
           </View>
         ))}
+        {song.lyricsSource && (
+          <View style={{ marginTop: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.divider, gap: 4 }}>
+            <Text style={{ color: colors.neutral500, fontSize: 12 }}>
+              Imported from {providerLabel(song.lyricsSource.provider)}
+              {song.lyricsSource.modifiedSinceImport ? ' · Edited in your library' : ''}
+            </Text>
+            {!!song.lyricsSource.attribution && (
+              <Text style={{ color: colors.neutral500, fontSize: 12 }}>
+                {song.lyricsSource.attribution.text || `Lyrics: ${song.lyricsSource.attribution.name}`}
+              </Text>
+            )}
+          </View>
+        )}
       </ScrollView>
     </View>
   );
+}
+
+function providerLabel(provider: string): string {
+  return ({ genius: 'Genius', lrclib: 'LRCLIB', lyricsovh: 'Lyrics.ovh', synclrc: 'SyncLRC', betterlyrics: 'BetterLyrics', youtubemusic: 'YouTube Music' } as Record<string, string>)[provider] || provider;
 }
 
 const styles = StyleSheet.create({

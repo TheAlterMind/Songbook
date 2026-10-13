@@ -27,6 +27,7 @@ export default function SettingsScreen() {
     try {
       const result = await importLibrary();
       if (result) {
+        setSongCount((await getAllSongs()).length);
         Alert.alert('Import complete', `${result.imported} added, ${result.skipped} skipped (already in your library).`);
       }
     } catch (e: any) {

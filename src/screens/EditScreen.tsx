@@ -130,6 +130,7 @@ export default function EditScreen() {
   const onSave = async () => {
     const newLines = lines.map((text, i) => ({ text, chord: (chordRows[i] || '').trim() }));
     await updateSong({
+      ...loadedSong,
       id: songId,
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown Artist',
@@ -141,6 +142,11 @@ export default function EditScreen() {
       key,
       favorite,
       lines: newLines,
+      lyricsSource: loadedSong.lyricsSource ? {
+        ...loadedSong.lyricsSource,
+        modifiedSinceImport: loadedSong.lyricsSource.modifiedSinceImport ||
+          lyricsText !== loadedSong.lines.map((line) => line.text).join('\n'),
+      } : undefined,
     });
     navigation.goBack();
   };
