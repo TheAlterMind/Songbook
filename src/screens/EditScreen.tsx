@@ -173,7 +173,7 @@ export default function EditScreen() {
               value={lyricsText}
               onChangeText={handleLyricsChange}
               multiline
-              placeholder="Paste or type the full lyrics\u2026"
+              placeholder="Paste or type the full lyrics…"
               placeholderTextColor={colors.neutral500}
               style={[inputStyle(colors, radius), { minHeight: 160, textAlignVertical: 'top' }]}
             />

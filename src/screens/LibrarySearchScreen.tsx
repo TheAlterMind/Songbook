@@ -35,7 +35,7 @@ export default function LibrarySearchScreen() {
           <TextInput
             value={query}
             onChangeText={runSearch}
-            placeholder="Title, artist, album, or a line\u2026"
+            placeholder="Title, artist, album, or a line…"
             placeholderTextColor={colors.neutral500}
             style={{ flex: 1, color: colors.text, paddingVertical: 10 }}
           />

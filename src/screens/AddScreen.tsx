@@ -135,7 +135,7 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
           accessibilityLabel="Lyrics"
           testID="song-lyrics-input"
           multiline
-          placeholder="Find lyrics above, or paste your own\u2026"
+          placeholder="Find lyrics above, or paste your own…"
           placeholderTextColor={colors.neutral500}
           style={[inputStyle(colors, radius), { minHeight: 150, textAlignVertical: 'top' }]}
         />
