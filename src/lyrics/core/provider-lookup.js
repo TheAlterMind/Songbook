@@ -100,6 +100,20 @@ function sameSong(selection, song) {
   }
   return true;
 }
+// A chord chart often describes the composition rather than a particular live
+// recording. Only a known arrangement provider may relax these explicit labels;
+// discovery must then corroborate its lyrics before presenting the arrangement.
+function arrangementTitle(title) {
+  return title.replace(/\s*(?:\((?:(?:acoustic|live|unplugged|version)\s*)+\)|\[(?:(?:acoustic|live|unplugged|version)\s*)+\]|\s[-\u2013\u2014]\s(?:(?:acoustic|live|unplugged|version)\s*)+)\s*$/iu, '').trim();
+}
+function sameArrangement(selection, song, provider) {
+  if (!['songsterr', 'ultimateguitar'].includes(provider) || normalize(selection.artist) !== normalize(song.artist)) return false;
+  const selected = arrangementTitle(selection.title);
+  let candidate = arrangementTitle(song.title);
+  // Songsterr sometimes appends the literal "Acoustic" without parentheses.
+  if (selected !== selection.title) candidate = candidate.replace(/\s+acoustic$/iu, '');
+  return titleKey(selected) === titleKey(candidate);
+}
 function sameAlbum(a, b) {
   return Boolean(a.album && b.album && normalize(a.album) === normalize(b.album));
 }
@@ -154,12 +168,13 @@ export function createProviderLookup({ search, getLyrics }) {
         throw error;
       }
       const song = metadata(result?.song, true);
-      if (song.provider !== provider || song.id !== candidate.id || !sameSong(selection, song) || !sameSong(candidate, song)) throw invalidResponse();
+      const strictMatch = sameSong(selection, song);
+      if (song.provider !== provider || song.id !== candidate.id || (!strictMatch && !sameArrangement(selection, song, provider)) || !sameSong(candidate, song)) throw invalidResponse();
       if (song.instrumental || song.hasLyrics === false || !hasText(result)) return null;
       const exactSelection = selection.provider === provider && selection.id === song.id;
       const matchingRecording = sameAlbum(selection, song) && selection.duration !== null && song.duration !== null
         && Math.abs(selection.duration - song.duration) <= 3 && normalize(selection.title) === normalize(song.title);
-      return { ...result, song: { ...result.song, hasLyrics: true }, match: { kind: exactSelection || matchingRecording ? 'same-recording' : 'same-song' } };
+      return { ...result, song: { ...result.song, hasLyrics: true }, match: { kind: exactSelection || matchingRecording ? 'same-recording' : 'same-song', ...(!strictMatch ? { requiresLyricsAgreement: true } : {}) } };
     };
 
     if (selection.provider === provider && selection.id) {
@@ -167,7 +182,7 @@ export function createProviderLookup({ search, getLyrics }) {
       if (result) return result;
     }
     let response;
-    try { response = await search(queryFor(selection), provider, { verifyLyrics: false }); }
+    try { response = await search(queryFor(['songsterr', 'ultimateguitar'].includes(provider) ? { ...selection, title: arrangementTitle(selection.title) } : selection), provider, { verifyLyrics: false }); }
     catch (error) {
       if (missing(error)) throw unresolvedFailure || unavailable();
       throw error;
@@ -175,7 +190,7 @@ export function createProviderLookup({ search, getLyrics }) {
     if (!Array.isArray(response?.results)) throw invalidResponse();
     const candidates = response.results.slice(0, 100).map(value => metadata(value, true));
     if (candidates.some(song => song.provider !== provider)) throw invalidResponse();
-    const matching = candidates.filter(song => sameSong(selection, song) && !song.instrumental && song.hasLyrics !== false)
+    const matching = candidates.filter(song => (sameSong(selection, song) || sameArrangement(selection, song, provider)) && !song.instrumental && song.hasLyrics !== false)
       .sort((a, b) => rank(selection, b) - rank(selection, a));
     for (const song of matching) {
       if (attempts >= MAX_ATTEMPTS) break;

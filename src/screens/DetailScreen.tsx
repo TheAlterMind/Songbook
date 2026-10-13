@@ -4,6 +4,9 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useTheme } from '../theme/ThemeContext';
 import { getSong, setFavorite, Song } from '../db/Database';
 import { BackChevronIcon, CollectionsTabIcon, StarIcon, EditPencilIcon } from '../components/Icons';
+import SongArrangement from '../components/SongArrangement';
+import SongMetadataPanel, { providerLabel } from '../components/SongMetadataPanel';
+import { lineHasChords } from '../utils/arrangement';
 
 export default function DetailScreen() {
   const navigation = useNavigation<any>();
@@ -22,7 +25,7 @@ export default function DetailScreen() {
 
   if (!song) return null;
 
-  const hasChords = song.lines.some((l) => !!l.chord);
+  const hasChords = song.lines.some(lineHasChords);
 
   const toggleFav = async () => {
     await setFavorite(songId, !song.favorite);
@@ -55,6 +58,7 @@ export default function DetailScreen() {
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('Edit', { songId })}
+          accessibilityRole="button" accessibilityLabel="Edit song"
           style={styles.iconBtn}
         >
           <EditPencilIcon color={colors.accent} size={18} />
@@ -81,6 +85,7 @@ export default function DetailScreen() {
         {hasChords && (
           <TouchableOpacity
             onPress={() => setChordsOn((v) => !v)}
+            accessibilityRole="switch" accessibilityLabel="Show chords" accessibilityState={{ checked: chordsOn }}
             style={{
               marginTop: 10,
               alignSelf: 'flex-start',
@@ -98,14 +103,9 @@ export default function DetailScreen() {
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-        {song.lines.map((line, i) => (
-          <View key={i} style={{ marginBottom: 9 }}>
-            {chordsOn && !!line.chord && (
-              <Text style={{ fontSize, color: colors.accent, fontFamily: 'monospace', lineHeight: fontSize * 1.2 }}>{line.chord}</Text>
-            )}
-            <Text style={{ fontSize, color: colors.text, lineHeight: fontSize * 1.5 }}>{line.text}</Text>
-          </View>
-        ))}
+        <Text style={{ color: colors.neutral500, fontSize: 16, marginBottom: 14 }}>{song.artist}</Text>
+        <View style={{ marginBottom: 18 }}><SongMetadataPanel metadata={{ ...song.metadata, ...(song.key ? { key: song.key } : {}), ...(song.album ? { album: song.album } : {}) }} sourceDetails={song.sourceDetails} /></View>
+        <SongArrangement lines={song.lines} fontSize={fontSize} chordsOn={chordsOn} />
         {song.lyricsSource && (
           <View style={{ marginTop: 18, paddingTop: 12, borderTopWidth: 1, borderTopColor: colors.divider, gap: 4 }}>
             <Text style={{ color: colors.neutral500, fontSize: 12 }}>
@@ -122,10 +122,6 @@ export default function DetailScreen() {
       </ScrollView>
     </View>
   );
-}
-
-function providerLabel(provider: string): string {
-  return ({ genius: 'Genius', lrclib: 'LRCLIB', lyricsovh: 'Lyrics.ovh', synclrc: 'SyncLRC', betterlyrics: 'BetterLyrics', youtubemusic: 'YouTube Music' } as Record<string, string>)[provider] || provider;
 }
 
 const styles = StyleSheet.create({

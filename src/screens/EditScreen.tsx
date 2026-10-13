@@ -2,54 +2,13 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
-import { getSong, updateSong, Song } from '../db/Database';
-import { transposeLine } from '../utils/transpose';
+import { getSong, updateSong, Song, SongLine } from '../db/Database';
+import { transposeKey, transposeSongLine } from '../utils/transpose';
 import { SortDownIcon, SortUpIcon, StarIcon } from '../components/Icons';
-
-// Diff-based reconciliation: finds the common prefix and suffix between the old
-// and new line arrays. Only the "changed" region in between is ambiguous; chords
-// in the prefix/suffix regions are preserved exactly (shifted by the line-count
-// delta if they're in the suffix), so inserting/deleting lines elsewhere never
-// touches chords that weren't actually affected. This is what keeps a single
-// free-flowing Lyrics field safe to edit even after chords are attached.
-function reconcileChordRows(
-  oldLines: string[],
-  newLines: string[],
-  oldChordRows: Record<number, string>
-): Record<number, string> {
-  let prefix = 0;
-  const minLen = Math.min(oldLines.length, newLines.length);
-  while (prefix < minLen && oldLines[prefix] === newLines[prefix]) prefix++;
-
-  let suffix = 0;
-  while (
-    suffix < minLen - prefix &&
-    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
-  ) {
-    suffix++;
-  }
-
-  const oldMidStart = prefix;
-  const oldMidEnd = oldLines.length - suffix;
-  const newMidLen = newLines.length - suffix - prefix;
-  const oldMidLen = oldMidEnd - oldMidStart;
-  const delta = newLines.length - oldLines.length;
-
-  const newChordRows: Record<number, string> = {};
-  Object.keys(oldChordRows).forEach((key) => {
-    const oldIdx = Number(key);
-    const chord = oldChordRows[oldIdx];
-    if (oldIdx < oldMidStart) {
-      newChordRows[oldIdx] = chord;
-    } else if (oldIdx >= oldMidEnd) {
-      newChordRows[oldIdx + delta] = chord;
-    } else if (oldMidLen === newMidLen) {
-      newChordRows[oldIdx] = chord;
-    }
-    // else: a line was inserted/removed right at this chorded line's position — ambiguous, dropped.
-  });
-  return newChordRows;
-}
+import { lineHasChords, reconcileSongLines } from '../utils/arrangement';
+import SongArrangement from '../components/SongArrangement';
+import SongMetadataPanel from '../components/SongMetadataPanel';
+import { editedMetadata, importedMetadataFields } from '../utils/editorMetadata';
 
 export default function EditScreen() {
   const navigation = useNavigation<any>();
@@ -68,8 +27,11 @@ export default function EditScreen() {
   const [key, setKey] = useState('');
   const [favorite, setFavoriteLocal] = useState(false);
   const [lyricsText, setLyricsText] = useState('');
-  const [chordRows, setChordRows] = useState<Record<number, string>>({});
-  const prevLinesRef = useRef<string[]>([]);
+  const [arrangement, setArrangement] = useState<SongLine[]>([]);
+  const [chordsCleared, setChordsCleared] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const saveInFlight = useRef(false);
 
   useEffect(() => {
     getSong(songId).then((s) => {
@@ -81,55 +43,49 @@ export default function EditScreen() {
       setGenre(s.genre || '');
       setMood(s.mood || '');
       setLanguage(s.language || '');
-      setYear(s.year || '');
-      setKey(s.key || '');
+      setYear(s.year ?? importedMetadataFields(s.metadata).year);
+      setKey(s.key || s.metadata?.key || '');
       setFavoriteLocal(!!s.favorite);
       const initialLines = s.lines.map((l) => l.text);
       setLyricsText(initialLines.join('\n'));
-      prevLinesRef.current = initialLines;
-      const rows: Record<number, string> = {};
-      s.lines.forEach((l, i) => {
-        if (l.chord) rows[i] = l.chord;
-      });
-      setChordRows(rows);
+      setArrangement(s.lines);
     });
   }, [songId]);
 
   if (!loadedSong) return null;
 
-  const lines = lyricsText.split('\n');
-
   const handleLyricsChange = (newText: string) => {
-    const newLines = newText.split('\n');
-    setChordRows((prev) => reconcileChordRows(prevLinesRef.current, newLines, prev));
-    prevLinesRef.current = newLines;
+    const next = reconcileSongLines(arrangement, newText);
+    if (arrangement.filter(lineHasChords).length > next.filter(lineHasChords).length) setChordsCleared(true);
+    setArrangement(next);
     setLyricsText(newText);
   };
 
   const toggleChordRow = (idx: number) => {
-    setChordRows((prev) => {
-      const next = { ...prev };
-      if (idx in next) delete next[idx];
-      else next[idx] = '';
-      return next;
-    });
+    setArrangement((prev) => prev.map((line, i) => i === idx
+      ? line.chord !== undefined || line.chords?.length ? { text: line.text } : { text: line.text, chord: '' }
+      : line));
   };
   const updateChordRow = (idx: number, val: string) => {
-    setChordRows((prev) => ({ ...prev, [idx]: val }));
+    setArrangement((prev) => prev.map((line, i) => i === idx ? { text: line.text, chord: val } : line));
+  };
+  const updateAnchor = (lineIndex: number, anchorIndex: number, symbol: string) => {
+    setArrangement((prev) => prev.map((line, i) => i === lineIndex ? {
+      ...line, chords: line.chords?.map((anchor, a) => a === anchorIndex ? { ...anchor, symbol } : anchor),
+    } : line));
   };
   const transpose = (steps: number) => {
-    setChordRows((prev) => {
-      const next: Record<number, string> = {};
-      Object.keys(prev).forEach((k) => {
-        next[Number(k)] = transposeLine(prev[Number(k)], steps);
-      });
-      return next;
-    });
+    setArrangement((prev) => prev.map((line) => transposeSongLine(line, steps)));
+    if (key.trim()) setKey(transposeKey(key, steps));
   };
 
   const onSave = async () => {
-    const newLines = lines.map((text, i) => ({ text, chord: (chordRows[i] || '').trim() }));
-    await updateSong({
+    if (saveInFlight.current) return;
+    saveInFlight.current = true; setSaving(true); setSaveError('');
+    const newLines = arrangement.map((line) => ({ ...line,
+      ...(line.chords ? { chords: line.chords.filter((anchor) => anchor.symbol.trim()).map((anchor) => ({ ...anchor, symbol: anchor.symbol.trim() })) } : {}),
+    }));
+    try { await updateSong({
       ...loadedSong,
       id: songId,
       title: title.trim() || 'Untitled',
@@ -142,24 +98,27 @@ export default function EditScreen() {
       key,
       favorite,
       lines: newLines,
+      metadata: editedMetadata(loadedSong.metadata, { key, album, genre, language, year }),
       lyricsSource: loadedSong.lyricsSource ? {
         ...loadedSong.lyricsSource,
         modifiedSinceImport: loadedSong.lyricsSource.modifiedSinceImport ||
-          lyricsText !== loadedSong.lines.map((line) => line.text).join('\n'),
+          JSON.stringify(newLines) !== JSON.stringify(loadedSong.lines),
       } : undefined,
     });
     navigation.goBack();
+    } catch { setSaveError('Could not save the song. Your changes are still here; please try again.'); }
+    finally { saveInFlight.current = false; setSaving(false); }
   };
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}>
+        <TouchableOpacity disabled={saving} onPress={() => navigation.goBack()}>
           <Text style={{ color: colors.accent }}>Cancel</Text>
         </TouchableOpacity>
         <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '600' }}>Edit song</Text>
-        <TouchableOpacity onPress={onSave}>
-          <Text style={{ color: colors.accent, fontWeight: '600' }}>Save</Text>
+        <TouchableOpacity disabled={saving} onPress={onSave} accessibilityRole="button" accessibilityLabel="Save song">
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>{saving ? 'Saving…' : 'Save'}</Text>
         </TouchableOpacity>
       </View>
       <KeyboardAvoidingView
@@ -167,10 +126,12 @@ export default function EditScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
-        <ScrollView contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 220 }} keyboardShouldPersistTaps="handled">
+        <ScrollView pointerEvents={saving ? 'none' : 'auto'} contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 220 }} keyboardShouldPersistTaps="handled">
+          {!!saveError && <Text accessibilityRole="alert" style={{ color: colors.text }}>{saveError}</Text>}
           <Field label="Lyrics" colors={colors}>
             <TextInput
               value={lyricsText}
+              accessibilityLabel="Lyrics" testID="edit-lyrics-input"
               onChangeText={handleLyricsChange}
               multiline
               placeholder="Paste or type the full lyrics…"
@@ -178,32 +139,41 @@ export default function EditScreen() {
               style={[inputStyle(colors, radius), { minHeight: 160, textAlignVertical: 'top' }]}
             />
           </Field>
+          {chordsCleared && <Text accessibilityRole="alert" style={{ color: colors.neutral500, fontSize: 13 }}>Chords were removed from edited lyric lines. Unchanged lines retain their chords.</Text>}
 
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
               <Text style={{ color: colors.neutral500, fontSize: 14, textTransform: 'uppercase' }}>Chords (optional)</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={{ fontSize: 13, color: colors.neutral500 }}>Transpose</Text>
-                <TouchableOpacity onPress={() => transpose(-1)} style={[styles.tinyBtn, { borderColor: colors.divider }]}>
+                <TouchableOpacity onPress={() => transpose(-1)} accessibilityRole="button" accessibilityLabel="Transpose down one semitone" style={[styles.tinyBtn, { borderColor: colors.divider }]}>
                   <SortDownIcon color={colors.text} size={10} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => transpose(1)} style={[styles.tinyBtn, { borderColor: colors.divider }]}>
+                <TouchableOpacity onPress={() => transpose(1)} accessibilityRole="button" accessibilityLabel="Transpose up one semitone" style={[styles.tinyBtn, { borderColor: colors.divider }]}>
                   <SortUpIcon color={colors.text} size={10} />
                 </TouchableOpacity>
               </View>
             </View>
             <Text style={{ fontSize: 13, color: colors.neutral500, marginBottom: 8 }}>
-              Add a chord row above any line, then use spaces to place it over a word. Chords stay attached to
-              their own line even if you insert or remove lines above them.
+              Imported chords stay attached to their words. Edit each chord below, or add a spaced chord row. Editing a lyric line clears its chords so they cannot drift onto different words.
             </Text>
-            {lines.map((text, idx) => {
-              if (!text.trim()) return null;
-              const has = idx in chordRows;
+            {arrangement.map((line, idx) => {
+              const text = line.text;
+              if (!text.trim() && !lineHasChords(line)) return null;
+              const has = line.chord !== undefined || !!line.chords?.length;
               return (
                 <View key={idx} style={{ marginBottom: 6 }}>
-                  {has && (
+                  {!!line.chords?.length && <>
+                    <SongArrangement lines={[line]} fontSize={15} />
+                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 6 }}>
+                      {line.chords.map((anchor, anchorIndex) => <TextInput key={anchorIndex} value={anchor.symbol}
+                        onChangeText={(symbol) => updateAnchor(idx, anchorIndex, symbol)} maxLength={64} autoCorrect={false} autoCapitalize="none"
+                        accessibilityLabel={`Chord ${anchorIndex + 1} on line ${idx + 1}`} style={{ minWidth: 52, color: colors.accent, borderWidth: 1, borderColor: colors.divider, borderRadius: 5, padding: 6 }} />)}
+                    </View>
+                  </>}
+                  {line.chord !== undefined && (
                     <TextInput
-                      value={chordRows[idx]}
+                      value={line.chord}
                       onChangeText={(v) => updateChordRow(idx, v)}
                       placeholder="  G      D"
                       placeholderTextColor={colors.neutral500}
@@ -220,7 +190,7 @@ export default function EditScreen() {
                     />
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontFamily: 'monospace', fontSize: 15, color: colors.text, flex: 1 }}>{text}</Text>
+                    <Text style={{ fontFamily: 'monospace', fontSize: 15, color: colors.text, flex: 1 }}>{line.chords?.length ? `Line ${idx + 1}` : text}</Text>
                     <TouchableOpacity onPress={() => toggleChordRow(idx)}>
                       <Text style={{ fontSize: 12, color: colors.accent }}>{has ? 'Remove chord' : '+ Chord'}</Text>
                     </TouchableOpacity>
@@ -229,6 +199,7 @@ export default function EditScreen() {
               );
             })}
           </View>
+          <SongMetadataPanel metadata={editedMetadata(loadedSong.metadata, { key, album, genre, language, year })} sourceDetails={loadedSong.sourceDetails} />
 
           <Divider colors={colors} />
           <Field label="Title" colors={colors}>

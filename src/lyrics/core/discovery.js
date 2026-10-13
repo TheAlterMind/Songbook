@@ -1,15 +1,18 @@
 import { createLyricsService, plainFromLrc } from './lyrics.js';
 import { HttpClient, LyricsError, abortError, throwIfAborted } from './http.js';
+import { hasChordArrangement, lyricWordCount, lyricsAgree } from './arrangements.js';
 
 export const PROVIDERS = Object.freeze([
   { id: 'genius', name: 'Genius' },
+  { id: 'songsterr', name: 'Songsterr' },
+  { id: 'ultimateguitar', name: 'Ultimate Guitar' },
   { id: 'lrclib', name: 'LRCLIB' },
   { id: 'youtubemusic', name: 'YouTube Music' },
   { id: 'lyricsovh', name: 'Lyrics.ovh' },
   { id: 'synclrc', name: 'SyncLRC' },
   { id: 'betterlyrics', name: 'Better Lyrics' },
 ].map(Object.freeze));
-const tieOrder = ['genius', 'lrclib', 'youtubemusic', 'synclrc', 'betterlyrics', 'lyricsovh'];
+const tieOrder = ['genius', 'songsterr', 'ultimateguitar', 'lrclib', 'youtubemusic', 'synclrc', 'betterlyrics', 'lyricsovh'];
 const absent = new Set(['NOT_FOUND', 'LYRICS_UNAVAILABLE', 'NO_MATCH']);
 
 async function boundedOperation(parent, timeoutMs, operation) {
@@ -56,19 +59,21 @@ function prepareResult(result) {
   const mostlyReadable = content.filter(line => line.length <= 200).length / content.length >= 0.8;
   const quality = Math.min(unique.size, 12) * 2 + (hasStanzas ? 8 : 0) + (hasSections ? 6 : 0) + (mostlyReadable ? 8 : 0);
   const exact = result.match?.kind === 'same-recording';
-  const reason = `${exact ? 'Exact recording match' : 'Same title and artist; recording may differ'}${hasStanzas || hasSections ? '; clear verse formatting' : mostlyReadable ? '; readable lyric lines' : ''}.`;
+  const hasChords = hasChordArrangement({ ...result, plainLyrics: plain });
+  const reason = `${hasChords ? 'Lyrics with corresponding chords; ' : ''}${exact ? 'Exact recording match' : 'Song match; recording may differ'}${hasStanzas || hasSections ? '; clear verse formatting' : mostlyReadable ? '; readable lyric lines' : ''}.`;
   return {
     ...result,
     plainLyrics: plain,
     syncedLyrics: typeof result.syncedLyrics === 'string' && result.syncedLyrics.trim() ? result.syncedLyrics : null,
-    match: { kind: exact ? 'same-recording' : 'same-song' },
+    lines: hasChords ? result.lines : undefined,
+    match: { kind: exact ? 'same-recording' : 'same-song', ...(result.match?.requiresLyricsAgreement ? { requiresLyricsAgreement: true } : {}) },
     // Identity already passed the strict matcher. A small recording preference
     // must not force Genius to win merely because its search omits duration.
     quality: { score: (exact ? 4 : 0) + quality, reason },
   };
 }
 function compare(a, b) {
-  return b.quality.score - a.quality.score || tieOrder.indexOf(a.song.provider) - tieOrder.indexOf(b.song.provider);
+  return Number(hasChordArrangement(b)) - Number(hasChordArrangement(a)) || b.quality.score - a.quality.score || tieOrder.indexOf(a.song.provider) - tieOrder.indexOf(b.song.provider);
 }
 
 export function createDeviceLyricsService({ fetchImpl, geniusToken = '', intervalMs = 300,
@@ -105,7 +110,7 @@ export function createDeviceLyricsService({ fetchImpl, geniusToken = '', interva
             const lyrics = prepareResult(raw);
             if (!lyrics) { emit({ provider, state: 'unavailable' }); continue; }
             sources.push(lyrics);
-            emit({ provider, state: 'found' });
+            if (!lyrics.match.requiresLyricsAgreement) emit({ provider, state: 'found' });
           } catch (error) {
             throwIfAborted(signal);
             if (error.name === 'AbortError') throw error;
@@ -115,6 +120,21 @@ export function createDeviceLyricsService({ fetchImpl, geniusToken = '', interva
       };
       await Promise.all(Array.from({ length: 3 }, run));
       throwIfAborted(signal);
+      const references = sources.filter(source => !source.match.requiresLyricsAgreement && !hasChordArrangement(source) && lyricWordCount(source.plainLyrics) >= 12)
+        .sort((a, b) => lyricWordCount(b.plainLyrics) - lyricWordCount(a.plainLyrics));
+      for (let index = sources.length - 1; index >= 0; index--) {
+        const source = sources[index];
+        const required = source.match.requiresLyricsAgreement;
+        const chart = hasChordArrangement(source);
+        if (!required && (!chart || !references.length)) continue;
+        if (chart && references.length && lyricsAgree(source.plainLyrics, references[0].plainLyrics)) {
+          delete source.match.requiresLyricsAgreement;
+          emit({ provider: source.song.provider, state: 'found' });
+        } else {
+          sources.splice(index, 1);
+          emit({ provider: source.song.provider, state: 'unavailable', message: 'The chord chart did not provide a complete matching lyric arrangement.' });
+        }
+      }
       sources.sort(compare);
       return { best: sources[0] || null, sources, checks: [...checks.values()] };
     },

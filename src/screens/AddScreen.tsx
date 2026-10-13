@@ -3,10 +3,15 @@ import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, Keyboa
 import { usePreventRemove } from '@react-navigation/native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
 import { useTheme } from '../theme/ThemeContext';
-import { addSong, type LyricsProvenance } from '../db/Database';
+import { addSong, type LyricsProvenance, type SongLine } from '../db/Database';
 import { SearchIcon } from '../components/Icons';
 import type { RootStackParamList } from '../types';
 import { PROVIDERS } from '../lyrics';
+import type { SongMetadata, SourceDetails } from '../songMetadata';
+import SongMetadataPanel from '../components/SongMetadataPanel';
+import SongArrangement from '../components/SongArrangement';
+import { lineHasChords, reconcileSongLines } from '../utils/arrangement';
+import { editedMetadata, importedMetadataFields } from '../utils/editorMetadata';
 
 export default function AddScreen({ navigation, route }: NativeStackScreenProps<RootStackParamList, 'Add'>) {
   const { colors, radius } = useTheme();
@@ -22,6 +27,10 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
   const [key, setKey] = useState('');
   const [lyricsSource, setLyricsSource] = useState<LyricsProvenance | undefined>();
   const [importedLyrics, setImportedLyrics] = useState<string | null>(null);
+  const [arrangement, setArrangement] = useState<SongLine[]>([]);
+  const [metadata, setMetadata] = useState<SongMetadata | undefined>();
+  const [sourceDetails, setSourceDetails] = useState<SourceDetails[] | undefined>();
+  const [chordsCleared, setChordsCleared] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [savedSongId, setSavedSongId] = useState<number | null>(null);
@@ -36,13 +45,22 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
     const draft = p?.lyricsImport;
     if (draft && draft.importId !== appliedImport.current) {
       appliedImport.current = draft.importId;
-      const text = draft.plainLyrics.replace(/\r\n?/g, '\n');
+      const text = (draft.lines?.length ? draft.lines.map((line) => line.text).join('\n') : draft.plainLyrics).replace(/\r\n?/g, '\n');
       setPasteText(text);
       setImportedLyrics(text);
+      setArrangement(draft.lines?.map((line) => ({ ...line })) ?? text.split('\n').map((line) => ({ text: line })));
+      setMetadata(draft.metadata);
+      setSourceDetails(draft.sourceDetails);
+      setChordsCleared(false);
       setTitle(draft.title);
       setArtist(draft.artist);
-      setAlbum((current) => current.trim() ? current : draft.album ?? '');
+      const importedFields = importedMetadataFields(draft.metadata, draft.album);
+      setAlbum(importedFields.album);
       setLyricsSource(draft.lyricsSource);
+      setKey(importedFields.key);
+      setGenre(importedFields.genre);
+      setLanguage(importedFields.language);
+      setYear(importedFields.year);
       setSaveError('');
       return;
     }
@@ -58,6 +76,11 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
   }, [savedSongId, saving, navigation]);
 
   const onCancel = () => { if (!saveInFlight.current) navigation.goBack(); };
+  const changeLyrics = (text: string) => {
+    const next = reconcileSongLines(arrangement, text);
+    if (arrangement.filter(lineHasChords).length > next.filter(lineHasChords).length) setChordsCleared(true);
+    setArrangement(next); setPasteText(text);
+  };
 
   const onSave = async () => {
     if (saveInFlight.current || savedSongId !== null) return;
@@ -72,7 +95,9 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
         artist: artist.trim() || 'Unknown Artist',
         album, genre, mood, language, year, key,
         favorite: false,
-        lines: rawLines.map((text) => ({ text, chord: '' })),
+        lines: normalizedLyrics.trim() ? reconcileSongLines(arrangement, normalizedLyrics) : rawLines.map((text) => ({ text })),
+        metadata: editedMetadata(metadata, { key, album, genre, language, year }),
+        sourceDetails,
         ...(lyricsSource ? { lyricsSource: {
           ...lyricsSource,
           modifiedSinceImport: !!lyricsSource.modifiedSinceImport || (importedLyrics !== null && normalizedLyrics !== importedLyrics),
@@ -130,7 +155,7 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
         </View>
         <TextInput
           value={pasteText}
-          onChangeText={setPasteText}
+          onChangeText={changeLyrics}
           editable={!saving}
           accessibilityLabel="Lyrics"
           testID="song-lyrics-input"
@@ -139,10 +164,17 @@ export default function AddScreen({ navigation, route }: NativeStackScreenProps<
           placeholderTextColor={colors.neutral500}
           style={[inputStyle(colors, radius), { minHeight: 150, textAlignVertical: 'top' }]}
         />
+        {chordsCleared && <Text accessibilityRole="alert" style={{ color: colors.neutral500, fontSize: 13 }}>Chords were removed from edited lyric lines. Unchanged lines retain their chords.</Text>}
+        {arrangement.some(lineHasChords) && <View style={{ gap: 8 }}>
+          <Text style={{ color: colors.accent, fontWeight: '600' }}>Chord arrangement included</Text>
+          <Text style={{ color: colors.neutral500, fontSize: 13 }}>Save to keep this arrangement. You can edit or transpose its chords from the song editor.</Text>
+          <SongArrangement lines={arrangement.slice(0, 4)} fontSize={15} />
+        </View>}
         {lyricsSource && <View style={{ gap: 4 }}>
           <Text style={{ color: colors.neutral500, fontSize: 13 }}>Imported from {PROVIDERS.find((provider) => provider.id === lyricsSource.provider)?.name ?? lyricsSource.provider}</Text>
           {!!lyricsSource.attribution && <Text style={{ color: colors.neutral500, fontSize: 13 }}>{lyricsSource.attribution.text || `Lyrics supplied by ${lyricsSource.attribution.name}`}</Text>}
         </View>}
+        <SongMetadataPanel metadata={editedMetadata(metadata, { key, album, genre, language, year })} sourceDetails={sourceDetails} />
         <Divider colors={colors} />
         <Field label="Title" colors={colors}>
           <TextInput

@@ -1,4 +1,5 @@
-import type { LyricsProvenance } from './db/Database';
+import type { LyricsProvenance, SongLine } from './db/Database';
+import type { SongMetadata, SourceDetails } from './songMetadata';
 
 export type LyricsImportDraft = {
   importId: string;
@@ -7,6 +8,9 @@ export type LyricsImportDraft = {
   album?: string;
   plainLyrics: string;
   lyricsSource: LyricsProvenance;
+  lines?: SongLine[];
+  metadata?: SongMetadata;
+  sourceDetails?: SourceDetails[];
 };
 
 export type RootStackParamList = {

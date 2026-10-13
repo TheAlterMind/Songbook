@@ -40,15 +40,15 @@ test('song search uses Genius exclusively', async () => {
   assert.deepEqual(searches, [{ query: 'Paper Satellites', provider: 'genius' }]);
 });
 
-test('checks all six providers and preserves credits and selected recording', async () => {
+test('checks all registered providers and preserves credits and selected recording', async () => {
   const { service, calls } = setup();
   const events = [];
   const found = await service.findLyrics(original, { onProgress: check => events.push(check) });
   assert.deepEqual([...calls].sort(), PROVIDERS.map(p => p.id).sort());
-  assert.equal(found.sources.length, 6);
+  assert.equal(found.sources.length, PROVIDERS.length);
   assert.ok(found.checks.every(c => c.state === 'found'));
-  assert.equal(events.filter(c => c.state === 'pending').length, 6);
-  assert.equal(events.filter(c => c.state === 'found').length, 6);
+  assert.equal(events.filter(c => c.state === 'pending').length, PROVIDERS.length);
+  assert.equal(events.filter(c => c.state === 'found').length, PROVIDERS.length);
   assert.equal(found.best.song.provider, 'genius');
   assert.equal(found.best.attribution.name, 'Fixture source');
   assert.equal(found.best.plainLyrics, words);
@@ -70,7 +70,7 @@ test('a different artist or version is excluded even when it supplies much more 
   alternate.song.title += ' (Live)';
   const { service } = setup({ lrclib: mismatched, youtubemusic: alternate });
   const found = await service.findLyrics(original);
-  assert.equal(found.sources.length, 4);
+  assert.equal(found.sources.length, PROVIDERS.length - 2);
   assert.ok(found.checks.filter(c => ['lrclib', 'youtubemusic'].includes(c.provider)).every(c => c.state === 'unavailable'));
 });
 
@@ -124,7 +124,7 @@ test('unavailable, blocked and timeout outcomes remain distinct while other prov
     lrclib: new LyricsError('LYRICS_UNAVAILABLE', 'No matching lyrics', 404),
     youtubemusic: new LyricsError('TIMEOUT', 'Fixture timed out', 504),
   }).service.findLyrics(original);
-  assert.equal(found.sources.length, 3);
+  assert.equal(found.sources.length, PROVIDERS.length - 3);
   assert.equal(found.checks.find(c => c.provider === 'genius').state, 'failed');
   assert.equal(found.checks.find(c => c.provider === 'lrclib').state, 'unavailable');
   assert.equal(found.checks.find(c => c.provider === 'youtubemusic').state, 'failed');
@@ -133,7 +133,7 @@ test('unavailable, blocked and timeout outcomes remain distinct while other prov
 
 test('placeholder and empty bodies never become sources', async () => {
   const found = await setup({ genius: result('genius', { plainLyrics: 'No lyrics available' }), lrclib: result('lrclib', { plainLyrics: '' }) }).service.findLyrics(original);
-  assert.equal(found.sources.length, 4);
+  assert.equal(found.sources.length, PROVIDERS.length - 2);
   assert.ok(found.sources.every(r => !['genius', 'lrclib'].includes(r.song.provider)));
 });
 
@@ -148,7 +148,7 @@ test('all unavailable returns null best without treating an outage as an empty m
 test('per-provider deadline finishes a partial lookup even if a provider ignores abort', async () => {
   const hung = () => new Promise(() => {});
   const found = await setup({ genius: hung }, { providerTimeoutMs: 15 }).service.findLyrics(original);
-  assert.equal(found.sources.length, 5);
+  assert.equal(found.sources.length, PROVIDERS.length - 1);
   assert.equal(found.checks[0].state, 'failed');
   assert.match(found.checks[0].message, /too long/);
 });
@@ -166,7 +166,7 @@ test('aborted discovery stops queued providers and does not publish stale comple
   finish();
   await delay(0);
   assert.equal(calls.length, 3);
-  assert.equal(events.length, 6);
+  assert.equal(events.length, PROVIDERS.length);
   assert.ok(events.every(c => c.state === 'pending'));
 });
 
@@ -180,4 +180,37 @@ test('already aborted lookup does no work and emits no progress', async () => {
 test('progress objects cannot mutate final provider statuses', async () => {
   const found = await setup().service.findLyrics(original, { onProgress: c => { c.state = 'failed'; } });
   assert.ok(found.checks.every(c => c.state === 'found'));
+});
+
+test('a matched chord arrangement wins over higher formatted lyrics and stays paired with its own text', async () => {
+  const chart = result('songsterr', { plainLyrics: words, lines: words.split('\n').map(text => ({ text, chords: text ? [{ offset: 0, symbol: 'C/G' }] : [] })) });
+  const found = await setup({ songsterr: chart, genius: result('genius', { plainLyrics: '[Verse]\n' + words }) }).service.findLyrics(original);
+  assert.equal(found.best.song.provider, 'songsterr');
+  assert.deepEqual(found.best.lines, chart.lines);
+  assert.match(found.best.quality.reason, /corresponding chords/);
+});
+
+test('a versionless chord arrangement needs corroborating lyrics before it can win', async () => {
+  const lyric = 'Synthetic morning paper boats\nCross a silver mountain lake\nWe carry twelve blue lanterns\nThrough the valley after rain';
+  const selected = { ...original, title: original.title + ' (Acoustic Live)' };
+  const chart = result('songsterr', { plainLyrics: lyric, lines: lyric.split('\n').map(text => ({ text, chords: [{ offset: 0, symbol: 'Am' }] })) });
+  const reference = result('genius', { song: selected, plainLyrics: lyric + '\n' + lyric });
+  const absent = Object.fromEntries(PROVIDERS.map(p => [p.id, new LyricsError('LYRICS_UNAVAILABLE', 'Missing', 404)]));
+  const found = await setup({ ...absent, songsterr: chart, genius: reference }).service.findLyrics(selected);
+  assert.equal(found.best.song.provider, 'songsterr');
+  assert.equal(found.best.match.kind, 'same-song');
+  assert.equal(found.best.match.requiresLyricsAgreement, undefined);
+  const unverified = await setup({ ...absent, songsterr: chart }).service.findLyrics(selected);
+  assert.equal(unverified.best, null);
+  assert.equal(unverified.checks.find(c => c.provider === 'songsterr').state, 'unavailable');
+});
+
+test('a partial chart cannot outrank complete matching lyrics even with exact title and artist', async () => {
+  const lyric = 'Synthetic morning paper boats\nCross a silver mountain lake\nWe carry twelve blue lanterns\nThrough the valley after rain';
+  const partial = lyric.split('\n').slice(0, 2).join('\n');
+  const chart = result('songsterr', { plainLyrics: partial, lines: partial.split('\n').map(text => ({ text, chords: [{ offset: 0, symbol: 'C' }] })) });
+  const absent = Object.fromEntries(PROVIDERS.map(p => [p.id, new LyricsError('LYRICS_UNAVAILABLE', 'Missing', 404)]));
+  const found = await setup({ ...absent, songsterr: chart, genius: result('genius', { plainLyrics: lyric }) }).service.findLyrics(original);
+  assert.equal(found.best.song.provider, 'genius');
+  assert.equal(found.checks.find(check => check.provider === 'songsterr').state, 'unavailable');
 });

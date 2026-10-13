@@ -39,6 +39,7 @@ test('LRCLIB search encodes user text and returns portable song metadata', async
     id: '42', provider: 'lrclib', title: 'Paper Satellites', artist: 'Fixture Ensemble',
     album: null, duration: 123.5, url: 'https://lrclib.net/api/get/42',
     instrumental: false, hasLyrics: true,
+    metadata: { duration: 123.5 },
   }] });
   const url = new URL(http.calls[0].url);
   assert.equal(url.origin, 'https://lrclib.net');
@@ -88,6 +89,7 @@ test('Genius search filters non-song hits and normalizes its different metadata 
     album: 'Test Record', duration: null,
     url: 'https://genius.com/Fixture-ensemble-paper-satellites-lyrics',
     instrumental: null, hasLyrics: null,
+    metadata: { album: 'Test Record' },
   }] });
   assert.deepEqual(http.calls, [{
     url: 'https://api.genius.com/search?q=paper',
@@ -103,6 +105,7 @@ test('Genius imports webpage lyrics after validating API metadata, without sendi
   assert.deepEqual(result.song, {
     id: '81', provider: 'genius', title: 'Paper Satellites', artist: 'Fixture Ensemble',
     album: null, duration: null, url: song.url, instrumental: null, hasLyrics: true,
+    metadata: undefined,
   });
   assert.equal(result.plainLyrics, 'A paper satellite\nAbove an empty desk');
   assert.equal(result.syncedLyrics, null);
@@ -144,6 +147,8 @@ test('configuration advertises inline lyrics from configured providers', () => {
   assert.deepEqual(service.config(), { providers: [
     { id: 'lrclib', name: 'LRCLIB', enabled: true, lyricsMode: 'inline' },
     { id: 'genius', name: 'Genius', enabled: true, lyricsMode: 'inline' },
+    { id: 'songsterr', name: 'Songsterr', enabled: true, lyricsMode: 'inline' },
+    { id: 'ultimateguitar', name: 'Ultimate Guitar', enabled: true, lyricsMode: 'inline' },
     { id: 'lyricsovh', name: 'Lyrics.ovh', enabled: true, lyricsMode: 'inline' },
     { id: 'synclrc', name: 'SyncLRC', enabled: true, lyricsMode: 'inline' },
     { id: 'betterlyrics', name: 'Better Lyrics', enabled: true, lyricsMode: 'inline' },

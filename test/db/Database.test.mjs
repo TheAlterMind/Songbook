@@ -18,6 +18,7 @@ registerHooks({
   },
 });
 const { validateBackup, validateLyricsProvenance, songContentKey } = await import(backupUrl.href);
+const { validateSongLines, validateSongMetadata } = await import(backupUrl.href);
 
 const source = {
   provider: 'youtubemusic', providerSongId: 'recording-1',
@@ -107,7 +108,7 @@ test('existing database migrates in place without changing lyrics, dates, favori
     assert.equal(saved.favorite, true);
     assert.equal(saved.lyricsSource, undefined);
     assert.deepEqual(await f.api.getCollectionSongIds(9), [42]);
-    assert.equal(f.native.prepare('PRAGMA user_version').get().user_version, 1);
+    assert.equal(f.native.prepare('PRAGMA user_version').get().user_version, 2);
     assert.ok(f.native.prepare('PRAGMA table_info(songs)').all().some((column) => column.name === 'lyricsSourceJson'));
   } finally { f.close(); }
 });
@@ -122,7 +123,7 @@ test('failed initialization is closed and a later attempt can retry', async () =
   } finally { f.close(); }
 });
 
-test('lyrics provenance survives persistence, edits, duplication and v2 export', async () => {
+test('lyrics provenance survives persistence, edits, duplication and v3 export', async () => {
   const f = await fixture();
   try {
     const id = await f.api.addSong(song(undefined, { lyricsSource: source }));
@@ -137,7 +138,7 @@ test('lyrics provenance survives persistence, edits, duplication and v2 export',
     assert.equal(copy.favorite, false);
     assert.ok(copy.createdAt > original.createdAt);
     const exported = await f.api.getAllDataForExport();
-    assert.equal(exported.version, 2);
+    assert.equal(exported.version, 3);
     assert.deepEqual(exported.songs[0].lyricsSource, edited.lyricsSource);
     assert.doesNotThrow(() => validateBackup(JSON.parse(JSON.stringify(exported))));
   } finally { f.close(); }
@@ -268,7 +269,7 @@ test('failed song or collection deletion leaves both the record and its membersh
 
 test('validation rejects unsupported versions, bad lines, orphan links, duplicate IDs and unsafe source URLs', () => {
   for (const invalid of [
-    backup(undefined, { version: 3 }),
+    backup(undefined, { version: 4 }),
     backup([song(1, { lines: [{ text: 123 }] })]),
     backup(undefined, { links: [{ song_id: 999, collection_id: 7 }] }),
     backup([song(1), song(1)]),
@@ -277,4 +278,76 @@ test('validation rejects unsupported versions, bad lines, orphan links, duplicat
   assert.throws(() => validateLyricsProvenance({ ...source, sourceUrl: 'https://user:secret@example.org' }));
   assert.equal(validateLyricsProvenance({ ...source, attribution: { name: 'x'.repeat(1000) } }).attribution.name.length, 1000);
   assert.notEqual(songContentKey(song()), songContentKey(song(2, { lines: [{ text: 'A synthetic lyric', chord: 'Am' }] })));
+});
+
+test('chord anchors and separate source metadata survive save, edit, duplicate and backup restore', async () => {
+  const first = await fixture();
+  const metadata = { key: 'C', capo: 2, tuning: ['E', 'A', 'D', 'G', 'B', 'E'], tempo: 92, timeSignature: '4/4', duration: 192.5,
+    artworkUrl: 'https://example.org/art.jpg', album: 'Fixture album', year: 2020, releaseDate: '2020-01-02', language: 'en',
+    mediaLinks: [{ kind: 'youtube', label: 'Performance', url: 'https://youtube.com/watch?v=fixture' }], credits: [{ role: 'Writer', name: 'Fixture Artist' }] };
+  const sourceDetails = [{ provider: 'songsterr', providerSongId: '/a/wsa/fixture-chords-s1', metadata },
+    { provider: 'genius', providerSongId: '2', metadata: { album: 'Different source album', duration: 195 } }];
+  const lines = [{ text: 'Synthetic words only', chords: [{ offset: 0, symbol: 'C/G' }, { offset: 10, symbol: 'Am' }] }, { text: '', chords: [{ offset: 0, symbol: 'Fmaj7' }] }];
+  let exported;
+  try {
+    const id = await first.api.addSong(song(undefined, { lines, metadata, sourceDetails }));
+    const saved = await first.api.getSong(id);
+    assert.deepEqual(saved.metadata, metadata);
+    assert.deepEqual(saved.sourceDetails, sourceDetails);
+    assert.deepEqual(saved.lines, lines);
+    await first.api.updateSong({ ...saved, metadata: { ...saved.metadata, key: 'D' } });
+    const duplicate = await first.api.getSong(await first.api.duplicateSong(id));
+    assert.equal(duplicate.metadata.key, 'D');
+    assert.equal(duplicate.sourceDetails[0].metadata.key, 'C');
+    exported = await first.api.getAllDataForExport();
+    assert.equal(exported.version, 3);
+  } finally { first.close(); }
+  const second = await fixture();
+  try {
+    await second.api.importData(JSON.parse(JSON.stringify(exported)));
+    const restored = await second.api.getAllSongs();
+    assert.equal(restored.length, 2);
+    assert.deepEqual(restored[0].lines, lines);
+    assert.deepEqual(restored[0].sourceDetails, sourceDetails);
+    assert.equal(restored[0].metadata.key, 'D');
+  } finally { second.close(); }
+});
+
+test('version 1 database migrates metadata columns without losing an existing source', async () => {
+  const f = await fixture({ legacy: true });
+  try {
+    f.native.exec('ALTER TABLE songs ADD COLUMN lyricsSourceJson TEXT; PRAGMA user_version=1;');
+    f.native.prepare('UPDATE songs SET lyricsSourceJson=?').run(JSON.stringify(source));
+    const saved = await f.api.getSong(42);
+    assert.deepEqual(saved.lyricsSource, source);
+    assert.equal(saved.metadata, undefined);
+    assert.deepEqual(saved.lines, song().lines);
+    assert.equal(f.native.prepare('PRAGMA user_version').get().user_version, 2);
+  } finally { f.close(); }
+});
+
+test('metadata validation rejects unsafe links and invalid anchors before a partial import', async () => {
+  for (const metadata of [{ capo: -1 }, { capo: 2.5 }, { tempo: Infinity }, { artworkUrl: 'file:///secret' },
+    { mediaLinks: [{ kind: 'web', url: 'http://example.org' }] }, { credits: [{ role: 'writer', name: 7 }] }]) {
+    assert.throws(() => validateSongMetadata(metadata));
+  }
+  for (const chords of [[{ offset: 99, symbol: 'C' }], [{ offset: 0.5, symbol: 'C' }], [{ offset: 1, symbol: '' }],
+    [{ offset: 3, symbol: 'C' }, { offset: 1, symbol: 'G' }]]) {
+    assert.throws(() => validateSongLines([{ text: 'Fixture', chords }]));
+  }
+  assert.throws(() => validateSongLines([{ text: '😀', chords: [{ offset: 1, symbol: 'C' }] }]));
+  assert.doesNotThrow(() => validateSongLines([{ text: '😀', chords: [{ offset: 2, symbol: 'C' }] }]));
+  const f = await fixture();
+  try {
+    await assert.rejects(f.api.importData(backup([song(1), song(2, { metadata: { capo: -1 } })], { version: 3 })));
+    assert.equal((await f.api.getAllSongs()).length, 0);
+  } finally { f.close(); }
+});
+
+test('same words with different chord positions remain distinct arrangements', () => {
+  const a = song(1, { lines: [{ text: 'Synthetic words', chords: [{ offset: 0, symbol: 'C' }] }] });
+  const b = song(2, { lines: [{ text: 'Synthetic words', chords: [{ offset: 10, symbol: 'C' }] }] });
+  assert.notEqual(songContentKey(a), songContentKey(b));
+  assert.notEqual(songContentKey({ ...a, metadata: { capo: 2 } }), songContentKey({ ...a, metadata: { capo: 5 } }));
+  assert.notEqual(songContentKey({ ...a, metadata: { tuning: ['D', 'A', 'D', 'G', 'A', 'D'] } }), songContentKey(a));
 });

@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
-import { readLyricsProvenance, songContentKey, validateBackup, validateLyricsProvenance } from './backup';
+import { readLyricsProvenance, songContentKey, validateBackup, validateLyricsProvenance, validateSongMetadata, validateSourceDetails, validateSongLines, readSongMetadata, readSourceDetails } from './backup';
+import type { ChordAnchor, SongMetadata, SourceDetails } from '../songMetadata';
 
 export interface LyricsProvenance {
   provider: string;
@@ -13,6 +14,7 @@ export interface LyricsProvenance {
 export interface SongLine {
   text: string;
   chord?: string;
+  chords?: ChordAnchor[];
 }
 
 export interface Song {
@@ -29,6 +31,8 @@ export interface Song {
   lines: SongLine[];
   createdAt?: number;
   lyricsSource?: LyricsProvenance;
+  metadata?: SongMetadata;
+  sourceDetails?: SourceDetails[];
 }
 
 export interface Collection {
@@ -58,7 +62,9 @@ async function initializeDatabase(): Promise<SQLite.SQLiteDatabase> {
         favorite INTEGER NOT NULL DEFAULT 0,
         linesJson TEXT NOT NULL,
         createdAt INTEGER NOT NULL,
-        lyricsSourceJson TEXT
+        lyricsSourceJson TEXT,
+        metadataJson TEXT,
+        sourceDetailsJson TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
       CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist);
@@ -83,6 +89,13 @@ async function initializeDatabase(): Promise<SQLite.SQLiteDatabase> {
         }
         await txn.execAsync('PRAGMA user_version = 1;');
       }
+      if ((version?.user_version ?? 0) < 2) {
+        const columns = await txn.getAllAsync<{ name: string }>('PRAGMA table_info(songs)');
+        for (const name of ['metadataJson', 'sourceDetailsJson']) {
+          if (!columns.some((column) => column.name === name)) await txn.execAsync(`ALTER TABLE songs ADD COLUMN ${name} TEXT;`);
+        }
+        await txn.execAsync('PRAGMA user_version = 2;');
+      }
     });
     return database;
   } catch (error) {
@@ -102,6 +115,8 @@ export function getDb(): Promise<SQLite.SQLiteDatabase> {
 }
 
 function rowToSong(row: any): Song {
+  const metadata = readSongMetadata(row.metadataJson);
+  const sourceDetails = readSourceDetails(row.sourceDetailsJson);
   return {
     id: row.id,
     title: row.title,
@@ -116,14 +131,19 @@ function rowToSong(row: any): Song {
     lines: JSON.parse(row.linesJson || '[]'),
     createdAt: row.createdAt,
     lyricsSource: readLyricsProvenance(row.lyricsSourceJson),
+    ...(metadata ? { metadata } : {}),
+    ...(sourceDetails ? { sourceDetails } : {}),
   };
 }
 
 async function insertSong(database: Pick<SQLite.SQLiteDatabase, 'runAsync'>, song: Song): Promise<number> {
   const source = validateLyricsProvenance(song.lyricsSource);
+  const metadata = validateSongMetadata(song.metadata);
+  const sourceDetails = validateSourceDetails(song.sourceDetails);
+  const lines = validateSongLines(song.lines || []);
   const result = await database.runAsync(
-    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, lyricsSourceJson)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, lyricsSourceJson, metadataJson, sourceDetailsJson)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -133,9 +153,11 @@ async function insertSong(database: Pick<SQLite.SQLiteDatabase, 'runAsync'>, son
     song.year ?? '',
     song.key ?? '',
     song.favorite ? 1 : 0,
-    JSON.stringify(song.lines || []),
+    JSON.stringify(lines),
     song.createdAt ?? Date.now(),
-    source ? JSON.stringify(source) : null
+    source ? JSON.stringify(source) : null,
+    metadata ? JSON.stringify(metadata) : null,
+    sourceDetails ? JSON.stringify(sourceDetails) : null
   );
   return result.lastInsertRowId as number;
 }
@@ -147,8 +169,11 @@ export async function addSong(song: Song): Promise<number> {
 export async function updateSong(song: Song): Promise<void> {
   const database = await getDb();
   const source = validateLyricsProvenance(song.lyricsSource);
+  const metadata = validateSongMetadata(song.metadata);
+  const sourceDetails = validateSourceDetails(song.sourceDetails);
+  const lines = validateSongLines(song.lines || []);
   await database.runAsync(
-    `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=?, lyricsSourceJson=? WHERE id=?`,
+    `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=?, lyricsSourceJson=?, metadataJson=?, sourceDetailsJson=? WHERE id=?`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -158,8 +183,10 @@ export async function updateSong(song: Song): Promise<void> {
     song.year ?? '',
     song.key ?? '',
     song.favorite ? 1 : 0,
-    JSON.stringify(song.lines || []),
+    JSON.stringify(lines),
     source ? JSON.stringify(source) : null,
+    metadata ? JSON.stringify(metadata) : null,
+    sourceDetails ? JSON.stringify(sourceDetails) : null,
     song.id as number
   );
 }
@@ -283,7 +310,7 @@ export async function getAllDataForExport() {
     collections: [] as Collection[],
     links: [] as { collection_id: number; song_id: number }[],
     exportedAt: Date.now(),
-    version: 2 as const,
+    version: 3 as const,
   };
   await database.withExclusiveTransactionAsync(async (txn) => {
     data.songs = (await txn.getAllAsync<any>('SELECT * FROM songs')).map(rowToSong);
@@ -315,6 +342,14 @@ export async function importData(value: unknown): Promise<{ imported: number; sk
         if (!match.lyricsSource && song.lyricsSource) {
           await txn.runAsync('UPDATE songs SET lyricsSourceJson=? WHERE id=?', JSON.stringify(song.lyricsSource), newId);
           match.lyricsSource = song.lyricsSource;
+        }
+        if (!match.metadata && song.metadata) {
+          await txn.runAsync('UPDATE songs SET metadataJson=? WHERE id=?', JSON.stringify(song.metadata), newId);
+          match.metadata = song.metadata;
+        }
+        if (!match.sourceDetails && song.sourceDetails) {
+          await txn.runAsync('UPDATE songs SET sourceDetailsJson=? WHERE id=?', JSON.stringify(song.sourceDetails), newId);
+          match.sourceDetails = song.sourceDetails;
         }
         skipped++;
       } else {

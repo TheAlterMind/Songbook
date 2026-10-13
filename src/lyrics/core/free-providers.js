@@ -2,6 +2,7 @@ import { encodeUtf8Base64Url, decodeUtf8Base64Url } from './encoding.js';
 import { load } from 'cheerio/slim';
 import { LyricsError } from './http.js';
 import { createYoutubeMusicProvider } from './youtube-music.js';
+import { deezerMetadata, sanitizeMetadata } from './metadata.js';
 
 export const freeProviderConfig = [
   { id: 'lyricsovh', name: 'Lyrics.ovh', enabled: true, lyricsMode: 'inline' },
@@ -23,25 +24,36 @@ function metadataText(value, required = true) {
 }
 const durationValue = value => typeof value === 'number' && Number.isFinite(value) && value >= 0 && value <= 86400 ? value : null;
 
-// These public selection IDs carry bounded metadata, never credentials or URLs.
+// These public selection IDs carry bounded metadata, never credentials. Version
+// two also preserves optional Deezer art/media facts across app restarts. URLs
+// are display metadata only and are never used as a lyric fetch destination.
 // SyncLRC IDs also carry the query and version details because its canonical IDs
 // are shared by different recordings. There is no process-local selection cache.
 function encodeSelection(provider, sourceId, song, query = null) {
-  return 'v1.' + encodeUtf8Base64Url(JSON.stringify([1, provider, sourceId, song.title, song.artist, song.album, song.duration, query]));
+  const extra = { ...sanitizeMetadata(song.metadata) };
+  delete extra.album;
+  delete extra.duration;
+  const values = [1, provider, sourceId, song.title, song.artist, song.album, song.duration, query];
+  if (provider === 'lyricsovh' && Object.keys(extra).length) {
+    const enriched = 'v2.' + encodeUtf8Base64Url(JSON.stringify([2, ...values.slice(1), extra]));
+    if (enriched.length <= 8192) return enriched;
+  }
+  return 'v1.' + encodeUtf8Base64Url(JSON.stringify(values));
 }
 function decodeSelection(id, provider) {
   try {
-    if (typeof id !== 'string' || id.length > 8192 || !/^v1\.[A-Za-z0-9_-]+$/.test(id)) throw new Error();
+    if (typeof id !== 'string' || id.length > 8192 || !/^v[12]\.[A-Za-z0-9_-]+$/.test(id)) throw new Error();
     const values = JSON.parse(decodeUtf8Base64Url(id.slice(3)));
-    if (!Array.isArray(values) || values.length !== 8) throw new Error();
-    const [version, origin, sourceId, title, artist, album, duration, query] = values;
-    if (version !== 1 || origin !== provider || typeof sourceId !== 'string' ||
+    if (!Array.isArray(values)) throw new Error();
+    const [version, origin, sourceId, title, artist, album, duration, query, extra] = values;
+    if (!((version === 1 && values.length === 8) || (version === 2 && values.length === 9 && provider === 'lyricsovh')) ||
+        !id.startsWith(`v${version}.`) || origin !== provider || typeof sourceId !== 'string' ||
         !(provider === 'synclrc' ? /^[a-f0-9]{32}$/ : /^[1-9]\d{0,14}$/).test(sourceId) ||
         metadataText(title) !== title || metadataText(artist) !== artist ||
         !(album === null || (typeof album === 'string' && metadataText(album, false) === album)) ||
         !(duration === null || durationValue(duration) === duration) ||
         !(provider === 'synclrc' ? typeof query === 'string' && query.trim() === query && query.length > 0 && query.length <= 200 : query === null)) throw new Error();
-    const song = { title, artist, album, duration };
+    const song = { title, artist, album, duration, metadata: sanitizeMetadata({ ...extra, album, duration }) };
     if (encodeSelection(provider, sourceId, song, query) !== id) throw new Error();
     return { sourceId, ...song, query };
   } catch {
@@ -57,6 +69,7 @@ function ovhSong(value) {
     provider: 'lyricsovh', title: metadataText(data.title), artist: metadataText(data.artist?.name),
     album: metadataText(data.album?.title, false), duration: durationValue(data.duration),
     instrumental: null, hasLyrics: null,
+    metadata: deezerMetadata(data),
   };
   return { ...song, id: encodeSelection('lyricsovh', sourceId, song), url: ovhUrl(song) };
 }
@@ -69,6 +82,7 @@ function syncSong(value, query) {
     album: metadataText(data.album, false), duration: durationValue(data.duration),
     instrumental: data.instrumental === true,
     hasLyrics: Boolean(clean(lyrics.plain) || clean(lyrics.synced) || clean(lyrics.karaoke)),
+    metadata: sanitizeMetadata({ album: data.album, duration: data.duration }),
   };
   const params = new URLSearchParams({ q: query, limit: '10' });
   return { ...song, id: encodeSelection('synclrc', data.id, song, query), url: `https://api.synclrc.dev/search?${params}` };
@@ -148,7 +162,8 @@ export function createFreeProviders({ http, searchCatalog, getCatalogSong, plain
       if (provider === 'lyricsovh') {
         const metadata = decodeSelection(id, provider);
         const song = { id, provider, title: metadata.title, artist: metadata.artist, album: metadata.album,
-          duration: metadata.duration, url: ovhUrl(metadata), instrumental: null, hasLyrics: true };
+          duration: metadata.duration, url: ovhUrl(metadata), instrumental: null, hasLyrics: true,
+          metadata: metadata.metadata };
         let data;
         try { data = object(await http.request(song.url)); }
         catch (error) { if (error.code === 'NOT_FOUND') throw unavailable('Lyrics.ovh'); throw error; }

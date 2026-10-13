@@ -1,4 +1,5 @@
 import { LyricsError } from './http.js';
+import { sanitizeMetadata, thumbnailUrl } from './metadata.js';
 
 const DOMAIN = 'https://music.youtube.com';
 const PROVIDER = 'youtubemusic';
@@ -59,10 +60,13 @@ function duration(value) {
   return total <= 86400 ? total : null;
 }
 
-function song(id, title, artist, album, seconds, hasLyrics = null) {
+function song(id, title, artist, album, seconds, hasLyrics = null, thumbnails) {
   if (typeof id !== 'string' || !VIDEO_ID.test(id) || !title || !artist) throw invalid('YouTube Music returned incomplete song metadata.');
   return { id, provider: PROVIDER, title, artist, album, duration: seconds,
-    url: `${DOMAIN}/watch?v=${id}`, instrumental: null, hasLyrics };
+    url: `${DOMAIN}/watch?v=${id}`, instrumental: null, hasLyrics,
+    metadata: sanitizeMetadata({ album, duration: seconds, artworkUrl: thumbnailUrl(thumbnails),
+      mediaLinks: [{ kind: 'audio', label: 'YouTube Music', url: `${DOMAIN}/watch?v=${id}` }] }),
+  };
 }
 
 function searchSongs(data) {
@@ -87,7 +91,8 @@ function searchSongs(data) {
       if (row.musicItemRendererDisplayPolicy === 'MUSIC_ITEM_RENDERER_DISPLAY_POLICY_GREY_OUT') continue;
       const meta = byline(columns[1]);
       const seconds = columns[1]?.runs?.map(run => duration(run.text)).find(value => value !== null) ?? null;
-      const result = song(id, runs(columns[0]), meta.artist, meta.album, seconds);
+      const result = song(id, runs(columns[0]), meta.artist, meta.album, seconds, null,
+        row.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails);
       if (!found.has(id)) found.set(id, result);
     }
   }
@@ -106,7 +111,8 @@ function selectedSong(data, id) {
   }
   const row = selected[0];
   const meta = byline(row.longBylineText);
-  const result = song(id, runs(row.title), meta.artist || runs(row.shortBylineText), meta.album, duration(runs(row.lengthText)));
+  const result = song(id, runs(row.title), meta.artist || runs(row.shortBylineText), meta.album,
+    duration(runs(row.lengthText)), null, row.thumbnail?.thumbnails);
   const lyricsTabs = tabs.filter(tab => tab.tabRenderer?.unselectable !== true)
     .map(tab => tab.tabRenderer?.endpoint?.browseEndpoint)
     .filter(endpoint => browseType(endpoint) === 'MUSIC_PAGE_TYPE_TRACK_LYRICS');

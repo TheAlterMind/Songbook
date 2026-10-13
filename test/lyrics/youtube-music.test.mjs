@@ -123,6 +123,27 @@ test('lyrics retrieval rejects a different selected video instead of returning i
   assert.equal(wire.posts().filter(call => call.path.endsWith('/browse')).length, 0);
 });
 
+test('YouTube Music retains the selected recording artwork and media link', async () => {
+  const item = resultItem();
+  item.musicResponsiveListItemRenderer.thumbnail = { musicThumbnailRenderer: { thumbnail: { thumbnails: [
+    { url: 'https://lh3.googleusercontent.com/search-art', width: 120 },
+  ] } } };
+  const selected = queueItem();
+  selected.playlistPanelVideoRenderer.thumbnail = { thumbnails: [
+    { url: 'https://lh3.googleusercontent.com/selected-small', width: 60 },
+    { url: 'https://lh3.googleusercontent.com/selected-large', width: 600 },
+  ] };
+  const wire = transport({ search: searchResponse(item), next: nextResponse({ queue: [selected] }) });
+  const provider = createYoutubeMusicProvider({ http: wire.client });
+  const candidate = (await provider.search('paper', { verifyLyrics: false })).results[0];
+  assert.equal(candidate.metadata.artworkUrl, 'https://lh3.googleusercontent.com/search-art');
+  const result = await provider.getLyrics(candidate.id);
+  assert.deepEqual(result.song.metadata, { album: 'Test Record', duration: 123,
+    artworkUrl: 'https://lh3.googleusercontent.com/selected-large',
+    mediaLinks: [{ kind: 'audio', label: 'YouTube Music', url: `https://music.youtube.com/watch?v=${VIDEO}` }],
+  });
+});
+
 test('a missing or disabled lyrics tab returns unavailable without fetching another tab', async () => {
   for (const options of [{ lyrics: false }, { unselectable: true }]) {
     const wire = transport({ next: nextResponse(options) });

@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { searchSongs, Song } from '../db/Database';
 import { SearchIcon, ChevronRightIcon } from '../components/Icons';
+import { PROVIDERS } from '../lyrics';
 
 export default function LibrarySearchScreen() {
   const navigation = useNavigation<any>();
@@ -74,7 +75,7 @@ export default function LibrarySearchScreen() {
           <SearchIcon color={colors.accent} size={18} />
           <View style={{ flex: 1, gap: 4 }}>
             <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600' }}>Find lyrics on Genius</Text>
-            <Text style={{ color: colors.neutral500, lineHeight: 20 }}>Find a song online, then compare all six lyrics sources.</Text>
+            <Text style={{ color: colors.neutral500, lineHeight: 20 }}>Find a song online, then compare lyrics and chords from {PROVIDERS.length} sources.</Text>
           </View>
           <ChevronRightIcon color={colors.accent} size={16} />
         </TouchableOpacity>

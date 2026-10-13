@@ -2,6 +2,9 @@ import { load } from 'cheerio/slim';
 import { HttpClient, LyricsError } from './http.js';
 import { createFreeProviders, freeProviderConfig } from './free-providers.js';
 import { createProviderLookup } from './provider-lookup.js';
+import { geniusMetadata, sanitizeMetadata } from './metadata.js';
+import { createSongsterrProvider } from './songsterr.js';
+import { createUltimateGuitarProvider } from './ultimate-guitar.js';
 
 const clean = value => typeof value === 'string' && value.trim() ? value.replace(/\r\n?/g, '\n').trim() : null;
 
@@ -42,6 +45,7 @@ function lrclibSong(data) {
     duration: typeof data.duration === 'number' && Number.isFinite(data.duration) ? data.duration : null,
     url: `https://lrclib.net/api/get/${id}`, instrumental: data.instrumental === true,
     hasLyrics: Boolean(clean(data.plainLyrics) || clean(data.syncedLyrics)),
+    metadata: sanitizeMetadata({ album: data.albumName, duration: data.duration }),
   };
 }
 
@@ -55,6 +59,7 @@ function geniusSong(data) {
     album: clean(data.album?.name), duration: null,
     url: sourceUrl(data.url, ['genius.com', 'www.genius.com']),
     instrumental: null, hasLyrics: null,
+    metadata: geniusMetadata(data),
   };
 }
 
@@ -88,6 +93,8 @@ export function extractGeniusLyrics(html) {
 
 export function createLyricsService({ http = new HttpClient(), geniusToken = '' } = {}) {
   const token = geniusToken.trim();
+  const songsterr = createSongsterrProvider({ http });
+  const ultimateGuitar = createUltimateGuitarProvider({ http });
   const free = createFreeProviders({
     http, plainFromLrc,
     async searchCatalog(query) {
@@ -103,7 +110,7 @@ export function createLyricsService({ http = new HttpClient(), geniusToken = '' 
     },
   });
   function providerCheck(provider) {
-    if (!['lrclib', 'genius'].includes(provider) && !free.has(provider)) throw new LyricsError('INVALID_PROVIDER', 'Choose an available lyrics provider.', 400);
+    if (!['lrclib', 'genius', 'songsterr', 'ultimateguitar'].includes(provider) && !free.has(provider)) throw new LyricsError('INVALID_PROVIDER', 'Choose an available lyrics provider.', 400);
     if (provider === 'genius' && !token) throw new LyricsError('NOT_CONFIGURED', 'Genius access is not configured for this build.', 503);
   }
   const genius = path => http.request(`https://api.genius.com${path}`, { headers: { Authorization: `Bearer ${token}` } });
@@ -112,6 +119,8 @@ export function createLyricsService({ http = new HttpClient(), geniusToken = '' 
       return { providers: [
         { id: 'lrclib', name: 'LRCLIB', enabled: true, lyricsMode: 'inline' },
         { id: 'genius', name: 'Genius', enabled: Boolean(token), lyricsMode: 'inline' },
+        { id: 'songsterr', name: 'Songsterr', enabled: true, lyricsMode: 'inline' },
+        { id: 'ultimateguitar', name: 'Ultimate Guitar', enabled: true, lyricsMode: 'inline' },
         ...freeProviderConfig.map(provider => ({ ...provider })),
       ] };
     },
@@ -120,6 +129,8 @@ export function createLyricsService({ http = new HttpClient(), geniusToken = '' 
       const q = typeof query === 'string' ? query.trim() : '';
       if (!q || q.length > 200) throw new LyricsError('INVALID_QUERY', 'Enter a song title and/or artist (up to 200 characters).', 400);
       const params = new URLSearchParams({ q });
+      if (provider === 'songsterr') return songsterr.search(q, options);
+      if (provider === 'ultimateguitar') return ultimateGuitar.search(q, options);
       if (free.has(provider)) return free.search(provider, q, options);
       if (provider === 'lrclib') {
         const data = await http.request(`https://lrclib.net/api/search?${params}`);
@@ -131,8 +142,10 @@ export function createLyricsService({ http = new HttpClient(), geniusToken = '' 
       if (!Array.isArray(hits)) throw new LyricsError('INVALID_RESPONSE', 'Genius returned an unexpected search response.');
       return { results: hits.map(record).filter(hit => hit.type === 'song').map(hit => geniusSong(hit.result)) };
     },
-    async getLyrics(provider, id) {
+    async getLyrics(provider, id, options = {}) {
       providerCheck(provider);
+      if (provider === 'songsterr') return songsterr.getLyrics(id, options);
+      if (provider === 'ultimateguitar') return ultimateGuitar.getLyrics(id, options);
       if (free.has(provider)) return free.getLyrics(provider, id);
       const safeId = idString(id);
       if (provider === 'lrclib') {
