@@ -120,7 +120,7 @@ export default function WebSearchScreen({ navigation, route }: Props) {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg, paddingTop: insets.top }}>
       <View style={{ paddingHorizontal: 16, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-        <TouchableOpacity onPress={() => selectedSong ? returnToResults() : navigation.goBack()} accessibilityRole="button" accessibilityLabel={selectedSong ? 'Back to search results' : 'Back to add song'} style={{ padding: 10 }}>
+        <TouchableOpacity onPress={() => selectedSong ? returnToResults() : navigation.goBack()} accessibilityRole="button" accessibilityLabel={selectedSong ? 'Back to search results' : route.params?.returnToAdd ? 'Back to add song' : 'Back to search'} style={{ padding: 10 }}>
           <BackChevronIcon color={colors.text} size={18} />
         </TouchableOpacity>
         <Text style={{ color: colors.text, fontSize: 23, fontWeight: '700', flex: 1 }}>Find lyrics</Text>
