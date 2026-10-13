@@ -100,6 +100,87 @@ test('uses an exact selection on its own provider without a catalog search', asy
   assert.deepEqual(calls.lyrics, [{ provider: 'lrclib', id: 'selected' }]);
 });
 
+test('the same provider record may supply album details omitted by search', async () => {
+  for (const [selectedAlbum, returnedAlbum] of [[null, 'Unplugged'], ['Unplugged', null]]) {
+    const selected = song('selected', { title: 'Paper Satellites (Acoustic Live)', album: selectedAlbum });
+    const { findLyrics, calls } = setup([], { selected: lyrics({ ...selected, album: returnedAlbum }) });
+    const result = await findLyrics(selected, 'lrclib');
+    assert.equal(result.song.album, returnedAlbum);
+    assert.equal(result.match.kind, 'same-recording');
+    assert.deepEqual(calls.search, []);
+    assert.deepEqual(calls.lyrics, [{ provider: 'lrclib', id: 'selected' }]);
+  }
+});
+
+test('album enrichment cannot bypass changed identity or version checks', async t => {
+  const selected = song('selected', { title: 'Paper Satellites (Acoustic Live)', album: null });
+  const changes = [
+    { id: 'different' }, { provider: 'genius' }, { title: 'Another Song (Acoustic Live)' },
+    { title: 'Paper Satellites' }, { artist: 'Different Ensemble' }, { duration: 300 },
+  ];
+  for (const change of changes) {
+    await t.test(JSON.stringify(change), async () => {
+      const { findLyrics, calls } = setup([], { selected: lyrics({ ...selected, album: 'Unplugged', ...change }) });
+      await assert.rejects(findLyrics(selected, 'lrclib'), code('INVALID_RESPONSE'));
+      assert.deepEqual(calls.search, []);
+    });
+  }
+});
+
+test('the same provider ID still cannot override conflicting known album versions', async () => {
+  const selected = song('selected');
+  const { findLyrics } = setup([], { selected: lyrics({ ...selected, album: 'Unplugged' }) });
+  await assert.rejects(findLyrics(selected, 'lrclib'), code('INVALID_RESPONSE'));
+});
+
+test('missing album data is not an identity match across providers or without a selected ID', async () => {
+  for (const selected of [
+    { ...selection, album: null, duration: null },
+    { ...selection, provider: 'lrclib', id: null, album: null, duration: null },
+  ]) {
+    // Even coincidentally equal IDs from different providers are not identity.
+    const { findLyrics, calls } = setup([song(selection.id, { album: 'Live 2012', duration: null })]);
+    await assert.rejects(findLyrics(selected, 'lrclib'), code('LYRICS_UNAVAILABLE'));
+    assert.deepEqual(calls.lyrics, []);
+  }
+});
+
+test('explicit acoustic live title matches corresponding album versions when search omitted the album', async () => {
+  const selected = { ...selection, title: 'Paper Satellites (Acoustic Live)', album: null, duration: null };
+  for (const album of ['Unplugged (Live)', 'Unplugged (Deluxe Edition) (Live)']) {
+    const candidate = song('1', { title: selected.title, album, duration: null });
+    const { findLyrics, calls } = setup([candidate]);
+    const result = await findLyrics(selected, 'lrclib');
+    assert.equal(result.song.album, album);
+    assert.equal(result.match.kind, 'same-song');
+    assert.deepEqual(calls.lyrics, [{ provider: 'lrclib', id: '1' }]);
+  }
+});
+
+test('title version evidence cannot admit incompatible albums, artists or lyricless recordings', async t => {
+  const selected = { ...selection, title: 'Paper Satellites (Acoustic Live)', album: null, duration: null };
+  const candidate = song('1', { title: selected.title, album: 'Unplugged (Live)', duration: null });
+  const cases = [
+    ['plain title has no version evidence', { title: 'Paper Satellites' }, { title: 'Paper Satellites' }],
+    ['ordinary title words are not version descriptors', { title: 'Live Acoustic Satellites' }, { title: 'Live Acoustic Satellites' }],
+    ['a parenthetical subtitle is not a version descriptor', { title: 'Paper Satellites (Live Forever)' }, { title: 'Paper Satellites (Live Forever)', album: 'Live 2012' }],
+    ['acoustic title does not imply live', { title: 'Paper Satellites (Acoustic)' }, { title: 'Paper Satellites (Acoustic)' }],
+    ['live title does not imply acoustic', { title: 'Paper Satellites (Live)' }, { title: 'Paper Satellites (Live)' }],
+    ['a cover has a different artist', {}, { artist: 'Different Ensemble' }],
+    ['a different title remains different', {}, { title: 'Another Song (Acoustic Live)' }],
+    ['a changed title version remains different', {}, { title: 'Paper Satellites (Live)' }],
+    ['instrumental metadata excludes lyrics', {}, { instrumental: true }],
+    ['an instrumental album has unsupported version evidence', {}, { album: 'Unplugged (Live) (Instrumental)' }],
+  ];
+  for (const [name, selectedChange, candidateChange] of cases) {
+    await t.test(name, async () => {
+      const { findLyrics, calls } = setup([{ ...candidate, ...candidateChange }]);
+      await assert.rejects(findLyrics({ ...selected, ...selectedChange }, 'lrclib'), code('LYRICS_UNAVAILABLE'));
+      assert.deepEqual(calls.lyrics, []);
+    });
+  }
+});
+
 test('known lyricless and instrumental catalog entries never become provider tabs', async () => {
   const { findLyrics, calls } = setup([
     song('1', { hasLyrics: false }), song('2', { instrumental: true }), song('3', { hasLyrics: true }),

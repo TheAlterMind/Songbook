@@ -55,9 +55,45 @@ function albumVersion(album) {
   }
   return markers.sort().join('|');
 }
+function titleVersions(title) {
+  const versions = new Set();
+  const markers = ['live', 'acoustic', 'unplugged', 'karaoke', 'instrumental', 'sped up', 'slowed', 'nightcore'];
+  // Only explicit version labels count. A title such as "Live Through This"
+  // or a parenthetical subtitle containing "live" is not version evidence.
+  const labels = title.matchAll(/\(([^()]*)\)|\[([^\[\]]*)\]|\s[-\u2013\u2014]\s(.+)$/gu);
+  for (const match of labels) {
+    let remaining = normalize(match[1] ?? match[2] ?? match[3]);
+    const found = [];
+    for (const marker of markers) {
+      const expression = new RegExp(`\\b${marker}\\b`, 'gu');
+      if (expression.test(remaining)) {
+        found.push(marker === 'unplugged' ? 'acoustic' : marker);
+        remaining = remaining.replace(expression, ' ');
+      }
+    }
+    remaining = remaining.replace(/\b(?:version|recording|performance|session)\b/gu, ' ').trim();
+    if (!remaining) for (const marker of found) versions.add(marker);
+  }
+  return versions;
+}
+function compatibleAlbumVersions(selection, song) {
+  const selectedVersion = albumVersion(selection.album);
+  const returnedVersion = albumVersion(song.album);
+  if (selectedVersion === returnedVersion) return true;
+  if (selection.album && song.album) return false;
+  // Search responses may omit an album that the detail response supplies.
+  // An unchanged provider ID is positive recording identity, not a conflict.
+  if (selection.provider && selection.provider === song.provider && selection.id && selection.id === song.id) return true;
+  // Across providers, a missing album alone cannot identify a live recording.
+  // Require the unchanged title to explicitly support every known version
+  // marker, e.g. "(Acoustic Live)" supports an "Unplugged (Live)" release.
+  const versions = titleVersions(selection.title);
+  return (selectedVersion || returnedVersion).split('|')
+    .every(marker => versions.has(marker === 'unplugged' ? 'acoustic' : marker));
+}
 function sameSong(selection, song) {
   if (titleKey(selection.title) !== titleKey(song.title) || normalize(selection.artist) !== normalize(song.artist)) return false;
-  if (albumVersion(selection.album) !== albumVersion(song.album)) return false;
+  if (!compatibleAlbumVersions(selection, song)) return false;
   if (selection.duration !== null && song.duration !== null) {
     const tolerance = Math.min(15, Math.max(8, selection.duration * 0.02));
     if (Math.abs(selection.duration - song.duration) > tolerance) return false;

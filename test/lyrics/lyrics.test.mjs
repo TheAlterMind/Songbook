@@ -115,6 +115,30 @@ test('Genius imports webpage lyrics after validating API metadata, without sendi
   assert.equal(JSON.stringify(service.config()).includes('test-secret-token'), false);
 });
 
+test('a Genius search hit without an album imports the same acoustic live record with its detailed album', async () => {
+  const searchSong = geniusRecord({ title: 'Paper Satellites (Acoustic Live)' });
+  const detailSong = { ...searchSong, album: { name: 'Unplugged' } };
+  const http = fakeHttp(
+    { response: { hits: [{ type: 'song', result: searchSong }] } },
+    { response: { song: detailSong } },
+    '<div data-lyrics-container="true">A paper satellite<br>Above an empty desk</div>',
+  );
+  const service = createLyricsService({ http, geniusToken: 'test-token' });
+  const { results } = await service.search('paper satellites fixture ensemble', 'genius');
+  assert.equal(results[0].album, null);
+  const result = await service.findLyrics(results[0], 'genius');
+  assert.equal(result.song.id, '81');
+  assert.equal(result.song.title, searchSong.title);
+  assert.equal(result.song.album, 'Unplugged');
+  assert.equal(result.match.kind, 'same-recording');
+  assert.equal(result.plainLyrics, 'A paper satellite\nAbove an empty desk');
+  assert.deepEqual(http.calls.map(call => call.url), [
+    'https://api.genius.com/search?q=paper+satellites+fixture+ensemble',
+    'https://api.genius.com/songs/81',
+    searchSong.url,
+  ]);
+});
+
 test('configuration advertises inline lyrics from configured providers', () => {
   const service = createLyricsService({ geniusToken: 'test-token' });
   assert.deepEqual(service.config(), { providers: [
