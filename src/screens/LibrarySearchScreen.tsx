@@ -1,25 +1,36 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Keyboard } from 'react-native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { searchSongs, Song } from '../db/Database';
 import { SearchIcon, ChevronRightIcon } from '../components/Icons';
+import { PROVIDERS } from '../lyrics';
 
 export default function LibrarySearchScreen() {
   const navigation = useNavigation<any>();
   const { colors, radius } = useTheme();
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<Song[]>([]);
+  const [searchError, setSearchError] = useState('');
 
-  const runSearch = async (q: string) => {
-    setQuery(q);
-    setResults(q.trim() ? await searchSongs(q.trim()) : []);
-  };
+  useFocusEffect(useCallback(() => {
+    let active = true;
+    setSearchError('');
+    setResults([]);
+    if (query.trim()) {
+      void searchSongs(query.trim()).then(
+        (songs) => { if (active) setResults(songs); },
+        () => { if (active) setSearchError('Your saved songs could not be searched. Please try again.'); },
+      );
+    }
+    return () => { active = false; };
+  }, [query]));
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={{ paddingTop: 54, paddingHorizontal: 20 }}>
         <Text style={{ fontSize: 30, fontWeight: '700', color: colors.text, marginBottom: 12 }}>Search</Text>
+        <Text style={{ color: colors.neutral500, marginBottom: 8 }}>Search saved songs</Text>
         <View
           style={{
             flexDirection: 'row',
@@ -34,12 +45,40 @@ export default function LibrarySearchScreen() {
           </View>
           <TextInput
             value={query}
-            onChangeText={runSearch}
-            placeholder="Title, artist, album, or a line\u2026"
+            onChangeText={setQuery}
+            placeholder="Title, artist, album, or a line…"
+            accessibilityLabel="Search saved songs"
+            testID="library-search-input"
             placeholderTextColor={colors.neutral500}
             style={{ flex: 1, color: colors.text, paddingVertical: 10 }}
           />
         </View>
+        <TouchableOpacity
+          onPress={() => {
+            Keyboard.dismiss();
+            navigation.navigate('WebSearch', { query: query.trim() });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel="Find lyrics on Genius"
+          testID="library-search-genius"
+          style={{
+            marginTop: 16,
+            padding: 16,
+            borderRadius: radius.md,
+            borderWidth: 1,
+            borderColor: colors.accent,
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 12,
+          }}
+        >
+          <SearchIcon color={colors.accent} size={18} />
+          <View style={{ flex: 1, gap: 4 }}>
+            <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600' }}>Find lyrics on Genius</Text>
+            <Text style={{ color: colors.neutral500, lineHeight: 20 }}>Find a song online, then compare lyrics and chords from {PROVIDERS.length} sources.</Text>
+          </View>
+          <ChevronRightIcon color={colors.accent} size={16} />
+        </TouchableOpacity>
       </View>
       <FlatList
         data={results}
@@ -47,7 +86,7 @@ export default function LibrarySearchScreen() {
         contentContainerStyle={{ padding: 20, gap: 8 }}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 60 }}>
-            {query.trim() ? `Nothing found for "${query}".` : 'Search across titles, artists, albums and lyric text.'}
+            {searchError || (query.trim() ? `No saved songs found for "${query}". Try Genius above.` : 'Search your saved songs by title, artist, album or lyric text.')}
           </Text>
         }
         renderItem={({ item }) => (

@@ -152,6 +152,9 @@ export default function LibraryScreen() {
       />
 
       <TouchableOpacity
+        accessibilityRole="button"
+        accessibilityLabel="Add song"
+        testID="library-add-song"
         onPress={() => navigation.navigate('Add')}
         style={[styles.fab, { borderColor: colors.accent, backgroundColor: colors.bg }]}
       >
