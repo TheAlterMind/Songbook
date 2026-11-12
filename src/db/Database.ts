@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { Platform } from 'react-native';
 
 export interface SongLine {
   text: string;
@@ -27,10 +28,87 @@ export interface Collection {
 }
 
 let db: SQLite.SQLiteDatabase | null = null;
+let opening: Promise<SQLite.SQLiteDatabase> | null = null;
+
+const DB_NAME = 'lyrics_library_v2.db';
+
+/** Thrown when this tab can't have the library because another tab or window is holding it. */
+export class DatabaseBusyError extends Error {
+  constructor(reload = false) {
+    super(
+      reload
+        ? 'Songbook is open in another tab or window. Close it there, then reload this page.'
+        : 'Songbook is open in another tab or window, which is holding your library. Close it there, then try again.'
+    );
+    this.name = 'DatabaseBusyError';
+  }
+}
+
+// On web the database is one browser file (OPFS) that only one tab may hold open. expo-sqlite only lets go
+// of it when the tab closes or reloads (closeAsync does not), and a tab whose open attempt is refused is left
+// unable to open it until it reloads. So a Web Lock guards the file: a tab holds the lock for as long as it
+// has the database, and another tab only tries to open once the lock is free, i.e. the first tab is gone.
+const LOCK = 'songbook-database';
+const WAIT_FOR_LOCK_MS = 5000;
+const isWeb = Platform.OS === 'web' && typeof navigator !== 'undefined';
+const isLockError = (e: any) =>
+  isWeb && /NoModificationAllowedError|Access Handles cannot be created|Invalid VFS state/i.test(String(e?.name) + String(e?.message));
+
+let releaseLock: (() => void) | null = null;
+
+/** Waits (up to a few seconds) until no other tab holds the database. */
+async function acquireLock(): Promise<void> {
+  const locks = isWeb ? (navigator as any).locks : null;
+  if (!locks || releaseLock) return;
+  const timeout = new AbortController();
+  const timer = setTimeout(() => timeout.abort(), WAIT_FOR_LOCK_MS);
+  try {
+    await new Promise<void>((granted, failed) => {
+      locks
+        .request(LOCK, { signal: timeout.signal }, () => new Promise<void>((release) => {
+          releaseLock = release;
+          granted();
+        }))
+        .catch(failed);
+    });
+  } catch {
+    throw new DatabaseBusyError();
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function freeLock() {
+  releaseLock?.();
+  releaseLock = null;
+}
 
 export async function getDb() {
-  if (!db) {
-    db = await SQLite.openDatabaseAsync('lyrics_library_v2.db');
+  if (db) return db;
+  // One open at a time: two parallel opens would fight over the same file.
+  if (!opening) {
+    opening = (async () => {
+      await acquireLock();
+      try {
+        const opened = await SQLite.openDatabaseAsync(DB_NAME);
+        await initSchema(opened);
+        db = opened;
+        return opened;
+      } catch (e) {
+        freeLock();
+        // Held by a tab outside the lock (an older version of the app): only a reload recovers.
+        if (isLockError(e)) throw new DatabaseBusyError(true);
+        throw e;
+      }
+    })().finally(() => {
+      opening = null;
+    });
+  }
+  return opening;
+}
+
+async function initSchema(db: SQLite.SQLiteDatabase) {
+  {
     await db.execAsync(`
       PRAGMA journal_mode = WAL;
       CREATE TABLE IF NOT EXISTS songs (
@@ -63,7 +141,6 @@ export async function getDb() {
       );
     `);
   }
-  return db;
 }
 
 function rowToSong(row: any): Song {

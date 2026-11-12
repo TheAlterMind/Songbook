@@ -4,53 +4,10 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, updateSong, Song } from '../db/Database';
+import { errorText, notify } from '../utils/notify';
 import { transposeLine } from '../utils/transpose';
+import { reconcileChordRows } from '../utils/chords';
 import { SortDownIcon, SortUpIcon, StarIcon } from '../components/Icons';
-
-// Diff-based reconciliation: finds the common prefix and suffix between the old
-// and new line arrays. Only the "changed" region in between is ambiguous; chords
-// in the prefix/suffix regions are preserved exactly (shifted by the line-count
-// delta if they're in the suffix), so inserting/deleting lines elsewhere never
-// touches chords that weren't actually affected. This is what keeps a single
-// free-flowing Lyrics field safe to edit even after chords are attached.
-function reconcileChordRows(
-  oldLines: string[],
-  newLines: string[],
-  oldChordRows: Record<number, string>
-): Record<number, string> {
-  let prefix = 0;
-  const minLen = Math.min(oldLines.length, newLines.length);
-  while (prefix < minLen && oldLines[prefix] === newLines[prefix]) prefix++;
-
-  let suffix = 0;
-  while (
-    suffix < minLen - prefix &&
-    oldLines[oldLines.length - 1 - suffix] === newLines[newLines.length - 1 - suffix]
-  ) {
-    suffix++;
-  }
-
-  const oldMidStart = prefix;
-  const oldMidEnd = oldLines.length - suffix;
-  const newMidLen = newLines.length - suffix - prefix;
-  const oldMidLen = oldMidEnd - oldMidStart;
-  const delta = newLines.length - oldLines.length;
-
-  const newChordRows: Record<number, string> = {};
-  Object.keys(oldChordRows).forEach((key) => {
-    const oldIdx = Number(key);
-    const chord = oldChordRows[oldIdx];
-    if (oldIdx < oldMidStart) {
-      newChordRows[oldIdx] = chord;
-    } else if (oldIdx >= oldMidEnd) {
-      newChordRows[oldIdx + delta] = chord;
-    } else if (oldMidLen === newMidLen) {
-      newChordRows[oldIdx] = chord;
-    }
-    // else: a line was inserted/removed right at this chorded line's position — ambiguous, dropped.
-  });
-  return newChordRows;
-}
 
 export default function EditScreen() {
   const navigation = useNavigation<any>();
@@ -129,8 +86,9 @@ export default function EditScreen() {
   };
 
   const onSave = async () => {
-    const newLines = lines.map((text, i) => ({ text, chord: (chordRows[i] || '').trim() }));
-    await updateSong({
+    const newLines = lines.map((text, i) => ({ text, chord: (chordRows[i] || '').trimEnd() }));
+    try {
+      await updateSong({
       id: songId,
       title: title.trim() || 'Untitled',
       artist: artist.trim() || 'Unknown Artist',
@@ -143,6 +101,10 @@ export default function EditScreen() {
       favorite,
       lines: newLines,
     });
+    } catch (e) {
+      notify('Could not save your changes', errorText(e));
+      return;
+    }
     navigation.goBack();
   };
 

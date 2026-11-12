@@ -1,58 +1,137 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, ActivityIndicator, Linking, Platform } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
-import { BackChevronIcon } from '../components/Icons';
-
-// If Google's results don't load well inside the WebView, swap this for:
-// https://duckduckgo.com/html/?q=  or  https://www.bing.com/search?q=
-const SEARCH_ENGINE_BASE = 'https://www.google.com/search?q=';
+import { BackChevronIcon, SearchIcon } from '../components/Icons';
+import { ListItem, ListSection } from '../components/Controls';
+import { formatDuration, lyricsOf, LrclibRecord, searchLyrics } from '../services/lrclib';
+import { SOURCES } from '../services/extract';
 
 export default function WebSearchScreen() {
   const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { colors, radius } = useTheme();
-  const [q, setQ] = useState('');
+  const [q, setQ] = useState<string>(route.params?.query ?? '');
+  const [results, setResults] = useState<LrclibRecord[] | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const abort = useRef<AbortController | null>(null);
 
-  const go = () => {
-    if (!q.trim()) return;
-    const url = `${SEARCH_ENGINE_BASE}${encodeURIComponent(q + ' lyrics')}`;
-    navigation.navigate('Browser', { url, query: q });
+  useEffect(() => () => abort.current?.abort(), []);
+
+  const search = async () => {
+    const query = q.trim();
+    if (!query) return;
+    abort.current?.abort();
+    const ctrl = new AbortController();
+    abort.current = ctrl;
+    setLoading(true);
+    setError('');
+    try {
+      setResults(await searchLyrics(query, ctrl.signal));
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return;
+      setResults(null);
+      setError(e?.message || 'Search failed. Check your connection and try again.');
+    } finally {
+      if (abort.current === ctrl) setLoading(false);
+    }
+  };
+
+  const pick = (r: LrclibRecord) => {
+    navigation.popTo('Add', {
+      prefillTitle: r.trackName,
+      prefillArtist: r.artistName,
+      prefillAlbum: r.albumName ?? '',
+      prefillLyrics: r.instrumental ? '(instrumental)' : lyricsOf(r),
+      importedFrom: 'LRCLIB',
+    });
+  };
+
+  const openSource = (id: keyof typeof SOURCES) => {
+    const src = SOURCES[id];
+    const url = src.searchUrl(q.trim());
+    // The in-app browser (and page import) needs the native WebView; on web the site opens in a tab.
+    if (Platform.OS === 'web') Linking.openURL(url);
+    else navigation.navigate('Browser', { url, query: q.trim() });
   };
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg, padding: 20, paddingTop: LAYOUT.top }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6, marginRight: 4 }}>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <View style={{ marginTop: LAYOUT.top, height: LAYOUT.headerHeight, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          style={{ width: LAYOUT.iconButton, height: LAYOUT.iconButton, alignItems: 'center', justifyContent: 'center' }}
+        >
           <BackChevronIcon color={colors.text} size={ICON.button} />
         </TouchableOpacity>
-        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Search the web</Text>
+        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Find lyrics</Text>
       </View>
-      <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginBottom: 6 }}>Song title / artist</Text>
-      <TextInput
-        value={q}
-        onChangeText={setQ}
-        onSubmitEditing={go}
-        autoFocus
-        placeholder="e.g. Fleetwood Mac Landslide"
-        placeholderTextColor={colors.neutral500}
-        style={{
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.divider,
-          borderRadius: radius.md,
-          padding: 12,
-          color: colors.text,
-          marginBottom: 16,
-        }}
-      />
-      <TouchableOpacity onPress={go} style={{ backgroundColor: colors.accent, borderRadius: radius.md, padding: 14, alignItems: 'center' }}>
-        <Text style={{ color: colors.accent100, fontWeight: '500' }}>Search</Text>
-      </TouchableOpacity>
-      <Text style={{ marginTop: 20, color: colors.neutral500, fontSize: TYPE.label, lineHeight: 18 }}>
-        This opens a normal in-app browser. Find a lyrics page you trust, select the text yourself, copy it, then come back
-        and tap "Save from clipboard."
-      </Text>
+
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 24, gap: 12 }} keyboardShouldPersistTaps="handled">
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            backgroundColor: colors.surface,
+            borderRadius: radius.md,
+            paddingLeft: 12,
+          }}
+        >
+          <SearchIcon color={colors.neutral500} size={ICON.inline} />
+          <TextInput
+            value={q}
+            onChangeText={setQ}
+            onSubmitEditing={search}
+            returnKeyType="search"
+            autoFocus
+            placeholder="Song title, artist or both"
+            placeholderTextColor={colors.neutral500}
+            style={{ flex: 1, padding: 12, fontSize: TYPE.body, color: colors.text }}
+          />
+          {loading && <ActivityIndicator color={colors.accent} style={{ marginRight: 12 }} />}
+        </View>
+
+        {!!error && <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>{error}</Text>}
+
+        {results && results.length === 0 && !loading && (
+          <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>
+            No lyrics found on LRCLIB. Try fewer words, or look on one of the sites below.
+          </Text>
+        )}
+
+        {results && results.length > 0 && (
+          <ListSection header={`LRCLIB · ${results.length} ${results.length === 1 ? 'match' : 'matches'}`}>
+            {results.map((r) => (
+              <ListItem
+                key={r.id}
+                title={r.trackName}
+                description={[r.artistName, r.albumName, formatDuration(r.duration), r.instrumental ? 'Instrumental' : '']
+                  .filter(Boolean)
+                  .join(' · ')}
+                onPress={() => pick(r)}
+              />
+            ))}
+          </ListSection>
+        )}
+
+        <ListSection header="Search other sites">
+          {(Object.keys(SOURCES) as (keyof typeof SOURCES)[]).map((id) => (
+            <ListItem
+              key={id}
+              title={SOURCES[id].name}
+              description={Platform.OS === 'web' ? 'Opens in a new tab' : SOURCES[id].hint}
+              onPress={() => openSource(id)}
+            />
+          ))}
+        </ListSection>
+
+        <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.neutral500 }}>
+          LRCLIB is a free, open lyrics database. On a song page from Genius or Ultimate Guitar, tap "Import" to bring the
+          lyrics (and Ultimate Guitar's chords) straight into a new song.
+        </Text>
+      </ScrollView>
     </View>
   );
 }

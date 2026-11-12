@@ -13,9 +13,15 @@ export default function LibraryScreen() {
   const { colors, radius, settings, updateSettings } = useTheme();
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
+  const [loadError, setLoadError] = useState('');
 
   const load = useCallback(async () => {
-    setSongs(await getAllSongs());
+    try {
+      setSongs(await getAllSongs());
+      setLoadError('');
+    } catch (e: any) {
+      setLoadError(e?.message || 'Could not open your library.');
+    }
   }, []);
 
   useFocusEffect(
@@ -100,7 +106,20 @@ export default function LibraryScreen() {
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ padding: 18, paddingTop: 8, paddingBottom: 100, gap: isExpanded ? 8 : 2 }}
         ListEmptyComponent={
-          <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 40 }}>No songs yet. Tap + to add one.</Text>
+          loadError ? (
+            <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, gap: 10, marginTop: 24 }}>
+              <Text style={{ fontSize: TYPE.body, color: colors.text }}>Your library can't be opened here</Text>
+              <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.neutral500 }}>{loadError}</Text>
+              <TouchableOpacity
+                onPress={load}
+                style={{ backgroundColor: colors.well, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center' }}
+              >
+                <Text style={{ fontSize: TYPE.body, color: colors.text }}>Try again</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 40 }}>No songs yet. Tap + to add one.</Text>
+          )
         }
         renderItem={({ item }) => (
           <TouchableOpacity
