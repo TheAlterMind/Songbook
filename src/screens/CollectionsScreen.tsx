@@ -2,9 +2,10 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
-import { TYPE, ICON, LAYOUT } from '../theme/tokens';
+import { TYPE, ICON } from '../theme/tokens';
 import { getAllCollections, addCollection, deleteCollection, getCollectionSongIds, Collection } from '../db/Database';
 import { ChevronRightIcon } from '../components/Icons';
+import ScreenHeader from '../components/ScreenHeader';
 
 export default function CollectionsScreen() {
   const navigation = useNavigation<any>();
@@ -49,9 +50,7 @@ export default function CollectionsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text, paddingTop: LAYOUT.top, paddingHorizontal: 20 }}>
-        Collections
-      </Text>
+      <ScreenHeader title="Collections" />
       <FlatList
         data={collections}
         keyExtractor={(item) => String(item.id)}

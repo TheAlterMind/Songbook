@@ -17,6 +17,8 @@ export interface Song {
   year?: string;
   key?: string;
   favorite?: boolean;
+  /** Album cover URL. null: not looked up yet. '': looked up, none found. */
+  cover?: string | null;
   lines: SongLine[];
   createdAt?: number;
 }
@@ -123,7 +125,8 @@ async function initSchema(db: SQLite.SQLiteDatabase) {
         key TEXT,
         favorite INTEGER NOT NULL DEFAULT 0,
         linesJson TEXT NOT NULL,
-        createdAt INTEGER NOT NULL
+        createdAt INTEGER NOT NULL,
+        cover TEXT
       );
       CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
       CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist);
@@ -140,6 +143,9 @@ async function initSchema(db: SQLite.SQLiteDatabase) {
         PRIMARY KEY (collection_id, song_id)
       );
     `);
+    // Libraries made before covers existed get the column added.
+    const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(songs)');
+    if (!cols.some((c) => c.name === 'cover')) await db.execAsync('ALTER TABLE songs ADD COLUMN cover TEXT');
   }
 }
 
@@ -155,6 +161,7 @@ function rowToSong(row: any): Song {
     year: row.year ?? '',
     key: row.key ?? '',
     favorite: !!row.favorite,
+    cover: row.cover ?? null,
     lines: JSON.parse(row.linesJson || '[]'),
     createdAt: row.createdAt,
   };
@@ -163,8 +170,8 @@ function rowToSong(row: any): Song {
 export async function addSong(song: Song): Promise<number> {
   const database = await getDb();
   const result = await database.runAsync(
-    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, cover)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -175,13 +182,18 @@ export async function addSong(song: Song): Promise<number> {
     song.key ?? '',
     song.favorite ? 1 : 0,
     JSON.stringify(song.lines || []),
-    Date.now()
+    Date.now(),
+    song.cover ?? null
   );
   return result.lastInsertRowId as number;
 }
 
 export async function updateSong(song: Song): Promise<void> {
   const database = await getDb();
+  // A different title or artist may be a different recording: look its cover up again.
+  const before = await database.getFirstAsync<any>('SELECT title, artist, album FROM songs WHERE id=?', song.id as number);
+  const changed = !!before && (before.title !== song.title || before.artist !== song.artist || (before.album ?? '') !== (song.album ?? ''));
+  if (changed) await database.runAsync('UPDATE songs SET cover=NULL WHERE id=?', song.id as number);
   await database.runAsync(
     `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=? WHERE id=?`,
     song.title,
@@ -196,6 +208,11 @@ export async function updateSong(song: Song): Promise<void> {
     JSON.stringify(song.lines || []),
     song.id as number
   );
+}
+
+export async function setSongCover(id: number, cover: string): Promise<void> {
+  const database = await getDb();
+  await database.runAsync('UPDATE songs SET cover=? WHERE id=?', cover, id);
 }
 
 export async function setFavorite(id: number, favorite: boolean): Promise<void> {
@@ -234,6 +251,7 @@ export async function duplicateSong(id: number): Promise<number | null> {
     year: song.year,
     key: song.key,
     favorite: false,
+    cover: song.cover,
     lines: song.lines,
   });
 }

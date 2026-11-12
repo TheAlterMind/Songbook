@@ -2,11 +2,12 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
-import { TYPE, LAYOUT } from '../theme/tokens';
+import { TYPE } from '../theme/tokens';
 import { CAN_SCALE, SCALE_CHOICES } from '../theme/scale';
 import { ListItem, ListSection, OptionSheet, Switch, TonalButton } from '../components/Controls';
 import { getAllSongs } from '../db/Database';
 import { exportLibrary, importLibrary } from '../utils/exportImport';
+import ScreenHeader from '../components/ScreenHeader';
 
 type Sheet = null | 'accent' | 'scale';
 
@@ -44,13 +45,9 @@ export default function SettingsScreen() {
   const scaleLabel = (SCALE_CHOICES.find((c) => c.value === settings.uiScale) ?? SCALE_CHOICES[1]).label;
 
   return (
-    <ScrollView
-      style={{ flex: 1, backgroundColor: colors.bg }}
-      contentContainerStyle={{ paddingHorizontal: 18, paddingTop: LAYOUT.top, paddingBottom: 24, gap: 12 }}
-    >
-      <View style={{ height: LAYOUT.headerHeight, justifyContent: 'center' }}>
-        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Settings</Text>
-      </View>
+    <View style={{ flex: 1, backgroundColor: colors.bg }}>
+    <ScreenHeader title="Settings" />
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24, gap: 12 }}>
 
       <ListSection header="Reading">
         <ListItem
@@ -127,6 +124,7 @@ export default function SettingsScreen() {
         onClose={() => setSheet(null)}
       />
     </ScrollView>
+    </View>
   );
 }
 

@@ -4,12 +4,10 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
-import { ICON, LAYOUT } from './src/theme/tokens';
+import { LAYOUT } from './src/theme/tokens';
 
 import LibraryScreen from './src/screens/LibraryScreen';
-import LibrarySearchScreen from './src/screens/LibrarySearchScreen';
 import CollectionsScreen from './src/screens/CollectionsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
 import CollectionDetailScreen from './src/screens/CollectionDetailScreen';
@@ -19,45 +17,8 @@ import AddScreen from './src/screens/AddScreen';
 import WebSearchScreen from './src/screens/WebSearchScreen';
 import BrowserScreen from './src/screens/BrowserScreen';
 import AddToCollectionScreen from './src/screens/AddToCollectionScreen';
-import { LibraryTabIcon, SearchTabIcon, CollectionsTabIcon, SettingsTabIcon } from './src/components/Icons';
 
 const Stack = createNativeStackNavigator();
-const Tab = createBottomTabNavigator();
-
-function Tabs() {
-  const { colors } = useTheme();
-  return (
-    <Tab.Navigator
-      screenOptions={{
-        headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.neutral500,
-        tabBarStyle: { backgroundColor: colors.menuBg, borderTopWidth: 0, elevation: 0, shadowOpacity: 0 },
-      }}
-    >
-      <Tab.Screen
-        name="Library"
-        component={LibraryScreen}
-        options={{ tabBarIcon: ({ color }) => <LibraryTabIcon color={color} size={ICON.tab} /> }}
-      />
-      <Tab.Screen
-        name="LibrarySearch"
-        component={LibrarySearchScreen}
-        options={{ title: 'Search', tabBarIcon: ({ color }) => <SearchTabIcon color={color} size={ICON.tab} /> }}
-      />
-      <Tab.Screen
-        name="Collections"
-        component={CollectionsScreen}
-        options={{ tabBarIcon: ({ color }) => <CollectionsTabIcon color={color} size={ICON.tab} /> }}
-      />
-      <Tab.Screen
-        name="Settings"
-        component={SettingsScreen}
-        options={{ tabBarIcon: ({ color }) => <SettingsTabIcon color={color} size={ICON.tab} /> }}
-      />
-    </Tab.Navigator>
-  );
-}
 
 function RootNavigator() {
   const { colors, loaded, wide, settings } = useTheme();
@@ -72,7 +33,9 @@ function RootNavigator() {
       <View style={[{ flex: 1, width: '100%', alignSelf: 'center', backgroundColor: colors.bg, overflow: 'hidden' }, column]}>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-            <Stack.Screen name="Tabs" component={Tabs} />
+            <Stack.Screen name="Library" component={LibraryScreen} />
+            <Stack.Screen name="Collections" component={CollectionsScreen} />
+            <Stack.Screen name="Settings" component={SettingsScreen} />
             <Stack.Screen name="WebSearch" component={WebSearchScreen} />
             <Stack.Screen name="Browser" component={BrowserScreen} />
             <Stack.Screen name="Add" component={AddScreen} />

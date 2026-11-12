@@ -4,6 +4,7 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, setFavorite, Song } from '../db/Database';
+import { Switch } from '../components/Controls';
 import { BackChevronIcon, CollectionsTabIcon, StarIcon, EditPencilIcon } from '../components/Icons';
 
 export default function DetailScreen() {
@@ -63,7 +64,7 @@ export default function DetailScreen() {
       </View>
 
       <View style={styles.toolbar}>
-        <View style={{ flexDirection: 'row', gap: 10 }}>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <TouchableOpacity
             onPress={() => setFontSize((f) => Math.max(16, f - 1))}
             hitSlop={{ top: 8, bottom: 8 }}
@@ -78,24 +79,13 @@ export default function DetailScreen() {
           >
             <Text style={{ color: colors.accent, fontSize: TYPE.body }}>A+</Text>
           </TouchableOpacity>
+          {hasChords && (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 6 }}>
+              <Text style={{ fontSize: TYPE.label, color: colors.text }}>Chords</Text>
+              <Switch value={chordsOn} onChange={setChordsOn} />
+            </View>
+          )}
         </View>
-        {hasChords && (
-          <TouchableOpacity
-            onPress={() => setChordsOn((v) => !v)}
-            style={{
-              marginTop: 10,
-              alignSelf: 'flex-start',
-              paddingVertical: 5,
-              paddingHorizontal: 12,
-              borderRadius: 20,
-              borderWidth: 1,
-              borderColor: chordsOn ? colors.accent : colors.divider,
-              backgroundColor: chordsOn ? colors.accent + '22' : 'transparent',
-            }}
-          >
-            <Text style={{ fontSize: TYPE.small, color: chordsOn ? colors.accent : colors.neutral500 }}>Chords {chordsOn ? 'On' : 'Off'}</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
       <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>

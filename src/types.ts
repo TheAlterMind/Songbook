@@ -1,5 +1,7 @@
 export type RootStackParamList = {
-  Tabs: undefined;
+  Library: undefined;
+  Collections: undefined;
+  Settings: undefined;
   WebSearch: undefined;
   Browser: { url: string; query: string };
   Add: { prefillLyrics?: string; prefillTitle?: string; prefillArtist?: string } | undefined;
@@ -7,11 +9,4 @@ export type RootStackParamList = {
   Detail: { songId: number };
   CollectionDetail: { collectionId: number };
   AddToCollection: { songId: number };
-};
-
-export type TabParamList = {
-  Library: undefined;
-  LibrarySearch: undefined;
-  Collections: undefined;
-  Settings: undefined;
 };
