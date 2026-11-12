@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, updateSong, Song } from '../db/Database';
 import { transposeLine } from '../utils/transpose';
 import { SortDownIcon, SortUpIcon, StarIcon } from '../components/Icons';
@@ -175,9 +176,9 @@ export default function EditScreen() {
 
           <View>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-              <Text style={{ color: colors.neutral500, fontSize: 14, textTransform: 'uppercase' }}>Chords (optional)</Text>
+              <Text style={{ color: colors.neutral500, fontSize: TYPE.label }}>Chords (optional)</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                <Text style={{ fontSize: 13, color: colors.neutral500 }}>Transpose</Text>
+                <Text style={{ fontSize: TYPE.tiny, color: colors.neutral500 }}>Transpose</Text>
                 <TouchableOpacity onPress={() => transpose(-1)} style={[styles.tinyBtn, { borderColor: colors.divider }]}>
                   <SortDownIcon color={colors.text} size={10} />
                 </TouchableOpacity>
@@ -186,7 +187,7 @@ export default function EditScreen() {
                 </TouchableOpacity>
               </View>
             </View>
-            <Text style={{ fontSize: 13, color: colors.neutral500, marginBottom: 8 }}>
+            <Text style={{ fontSize: TYPE.tiny, color: colors.neutral500, marginBottom: 8 }}>
               Add a chord row above any line, then use spaces to place it over a word. Chords stay attached to
               their own line even if you insert or remove lines above them.
             </Text>
@@ -203,7 +204,7 @@ export default function EditScreen() {
                       placeholderTextColor={colors.neutral500}
                       style={{
                         fontFamily: 'monospace',
-                        fontSize: 15,
+                        fontSize: TYPE.label,
                         padding: 4,
                         borderWidth: 1,
                         borderColor: colors.divider,
@@ -214,9 +215,9 @@ export default function EditScreen() {
                     />
                   )}
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <Text style={{ fontFamily: 'monospace', fontSize: 15, color: colors.text, flex: 1 }}>{text}</Text>
+                    <Text style={{ fontFamily: 'monospace', fontSize: TYPE.label, color: colors.text, flex: 1 }}>{text}</Text>
                     <TouchableOpacity onPress={() => toggleChordRow(idx)}>
-                      <Text style={{ fontSize: 12, color: colors.accent }}>{has ? 'Remove chord' : '+ Chord'}</Text>
+                      <Text style={{ fontSize: TYPE.tiny, color: colors.accent }}>{has ? 'Remove chord' : '+ Chord'}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -282,8 +283,8 @@ export default function EditScreen() {
               gap: 6,
             }}
           >
-            <StarIcon color={favorite ? colors.accent : colors.neutral500} filled={favorite} size={14} />
-            <Text style={{ fontSize: 15, color: colors.text }}>Favorite</Text>
+            <StarIcon color={favorite ? colors.accent : colors.neutral500} filled={favorite} size={ICON.inline} />
+            <Text style={{ fontSize: TYPE.label, color: colors.text }}>Favorite</Text>
           </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -294,7 +295,7 @@ export default function EditScreen() {
 function Field({ label, colors, children }: any) {
   return (
     <View style={{ gap: 5 }}>
-      <Text style={{ fontSize: 14, color: colors.neutral500 }}>{label}</Text>
+      <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>{label}</Text>
       {children}
     </View>
   );
@@ -312,10 +313,10 @@ function Divider({ colors }: any) {
   return <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 4 }} />;
 }
 function inputStyle(colors: any, radius: any) {
-  return { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, padding: 10, color: colors.text, fontSize: 16 };
+  return { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, padding: 10, color: colors.text, fontSize: TYPE.body };
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
+  header: { paddingTop: LAYOUT.top, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
   tinyBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

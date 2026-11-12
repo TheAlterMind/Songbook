@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { View, Text, TextInput, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { searchSongs, Song } from '../db/Database';
 import { SearchIcon, ChevronRightIcon } from '../components/Icons';
 
@@ -18,8 +19,8 @@ export default function LibrarySearchScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={{ paddingTop: 54, paddingHorizontal: 20 }}>
-        <Text style={{ fontSize: 26, fontWeight: '500', color: colors.text, marginBottom: 12 }}>Search</Text>
+      <View style={{ paddingTop: LAYOUT.top, paddingHorizontal: 20 }}>
+        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text, marginBottom: 12 }}>Search</Text>
         <View
           style={{
             flexDirection: 'row',
@@ -30,7 +31,7 @@ export default function LibrarySearchScreen() {
           }}
         >
           <View style={{ marginRight: 8 }}>
-            <SearchIcon color={colors.neutral500} size={15} strokeWidth={2} />
+            <SearchIcon color={colors.neutral500} size={ICON.small} strokeWidth={2} />
           </View>
           <TextInput
             value={query}
@@ -62,10 +63,10 @@ export default function LibrarySearchScreen() {
             }}
           >
             <View style={{ flex: 1 }}>
-              <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }}>{item.title}</Text>
-              <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
+              <Text style={{ fontSize: TYPE.body, fontWeight: '500', color: colors.text }}>{item.title}</Text>
+              <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
             </View>
-            <ChevronRightIcon color={colors.neutral500} size={14} />
+            <ChevronRightIcon color={colors.neutral500} size={ICON.small} />
           </TouchableOpacity>
         )}
       />

@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getCollectionSongIds, getSongsByIds, getAllCollections, Song } from '../db/Database';
 import { BackChevronIcon } from '../components/Icons';
 
@@ -28,11 +29,11 @@ export default function CollectionDetailScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={{ paddingTop: 54, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+      <View style={{ paddingTop: LAYOUT.top, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6 }}>
-          <BackChevronIcon color={colors.text} size={18} />
+          <BackChevronIcon color={colors.text} size={ICON.button} />
         </TouchableOpacity>
-        <Text style={{ fontSize: 24, fontWeight: '500', color: colors.text, flex: 1 }} numberOfLines={1}>
+        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text, flex: 1 }} numberOfLines={1}>
           {name}
         </Text>
       </View>
@@ -48,8 +49,8 @@ export default function CollectionDetailScreen() {
             onPress={() => navigation.navigate('Detail', { songId: item.id })}
             style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 14 }}
           >
-            <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }}>{item.title}</Text>
-            <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
+            <Text style={{ fontSize: TYPE.body, fontWeight: '500', color: colors.text }}>{item.title}</Text>
+            <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }}>{item.artist}</Text>
           </TouchableOpacity>
         )}
       />

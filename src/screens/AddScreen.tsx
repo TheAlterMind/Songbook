@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, Platform } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { addSong } from '../db/Database';
 import { SearchIcon } from '../components/Icons';
 
@@ -64,7 +65,7 @@ export default function AddScreen() {
       >
         <ScrollView contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 220 }} keyboardShouldPersistTaps="handled">
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: 14, color: colors.neutral500 }}>Paste lyrics</Text>
+          <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>Paste lyrics</Text>
           <TouchableOpacity
             onPress={() => navigation.navigate('WebSearch')}
             style={{
@@ -78,8 +79,8 @@ export default function AddScreen() {
               gap: 6,
             }}
           >
-            <SearchIcon color={colors.accent} size={12} strokeWidth={2} />
-            <Text style={{ color: colors.accent, fontSize: 14 }}>Search the web</Text>
+            <SearchIcon color={colors.accent} size={ICON.small} strokeWidth={2} />
+            <Text style={{ color: colors.accent, fontSize: TYPE.small }}>Search the web</Text>
           </TouchableOpacity>
         </View>
         <TextInput
@@ -148,7 +149,7 @@ export default function AddScreen() {
 function Field({ label, colors, children }: any) {
   return (
     <View style={{ gap: 5 }}>
-      <Text style={{ fontSize: 14, color: colors.neutral500 }}>{label}</Text>
+      <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>{label}</Text>
       {children}
     </View>
   );
@@ -166,9 +167,9 @@ function Divider({ colors }: any) {
   return <View style={{ height: 1, backgroundColor: colors.divider, marginVertical: 4 }} />;
 }
 function inputStyle(colors: any, radius: any) {
-  return { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, padding: 10, color: colors.text, fontSize: 16 };
+  return { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.divider, borderRadius: radius.md, padding: 10, color: colors.text, fontSize: TYPE.body };
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
+  header: { paddingTop: LAYOUT.top, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
 });

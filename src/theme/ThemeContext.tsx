@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useInterfaceScale } from './scale';
 import { ACCENT_OPTIONS, Colors, darkColors, lightColors, RADIUS } from './tokens';
 
 const SETTINGS_KEY = 'lyrics_library_settings_v1';
@@ -30,6 +31,8 @@ type ThemeContextType = {
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
   loaded: boolean;
+  /** Wide window: the app sits in a framed, centred column. */
+  wide: boolean;
 };
 
 const ThemeContext = createContext<ThemeContextType | null>(null);
@@ -37,6 +40,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
+  const { wide } = useInterfaceScale();
 
   useEffect(() => {
     AsyncStorage.getItem(SETTINGS_KEY)
@@ -70,7 +74,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   );
 
   return (
-    <ThemeContext.Provider value={{ colors, radius: RADIUS, settings, updateSettings, loaded }}>
+    <ThemeContext.Provider value={{ colors, radius: RADIUS, settings, updateSettings, loaded, wide }}>
       {children}
     </ThemeContext.Provider>
   );

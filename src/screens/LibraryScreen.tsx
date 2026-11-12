@@ -2,6 +2,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, Pressable } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getAllSongs, setFavorite, deleteSong, duplicateSong, Song } from '../db/Database';
 import { sortSongs, SORT_OPTIONS } from '../utils/sort';
 import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, PlusIcon } from '../components/Icons';
@@ -65,7 +66,7 @@ export default function LibraryScreen() {
         <Text style={[styles.h1, { color: colors.text }]}>Songbook</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity onPress={toggleViewMode} style={styles.iconBtn}>
-            {isExpanded ? <ExpandedViewIcon color={colors.accent} size={16} /> : <CompactViewIcon color={colors.accent} size={16} />}
+            {isExpanded ? <ExpandedViewIcon color={colors.accent} size={ICON.inline} /> : <CompactViewIcon color={colors.accent} size={ICON.inline} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -76,11 +77,11 @@ export default function LibraryScreen() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingRight: 12 }}
         >
-          <Text style={{ fontSize: 14, color: colors.neutral500 }}>Sorted by:</Text>
-          <Text style={{ fontSize: 15, fontWeight: '600', color: colors.accent, marginLeft: 6 }}>{sortLabel}</Text>
+          <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>Sorted by:</Text>
+          <Text style={{ fontSize: TYPE.label, fontWeight: '600', color: colors.accent, marginLeft: 6 }}>{sortLabel}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={toggleSortDir} style={styles.iconBtn}>
-          {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} size={16} /> : <SortDownIcon color={colors.accent} size={16} />}
+          {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} size={ICON.inline} /> : <SortDownIcon color={colors.accent} size={ICON.inline} />}
         </TouchableOpacity>
       </View>
 
@@ -98,10 +99,10 @@ export default function LibraryScreen() {
                   }}
                   style={[styles.modalRow, { borderBottomColor: colors.divider }]}
                 >
-                  <Text style={{ fontSize: 15, color: selected ? colors.accent : colors.text, fontWeight: selected ? '600' : '400' }}>
+                  <Text style={{ fontSize: TYPE.label, color: selected ? colors.accent : colors.text, fontWeight: selected ? '600' : '400' }}>
                     {opt.label}
                   </Text>
-                  {selected && <Text style={{ color: colors.accent, fontSize: 15 }}>{'\u2713'}</Text>}
+                  {selected && <Text style={{ color: colors.accent, fontSize: TYPE.label }}>{'\u2713'}</Text>}
                 </TouchableOpacity>
               );
             })}
@@ -123,12 +124,12 @@ export default function LibraryScreen() {
             style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: isExpanded ? 12 : 11 }]}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }} numberOfLines={1}>
+              <Text style={{ fontSize: TYPE.body, fontWeight: '500', color: colors.text }} numberOfLines={1}>
                 {item.title}
               </Text>
               {isExpanded && (
                 <>
-                  <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
+                  <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
                     {item.artist}
                   </Text>
                   <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
@@ -142,7 +143,7 @@ export default function LibraryScreen() {
             </View>
             {isExpanded ? (
               <TouchableOpacity onPress={() => toggleFav(item)} style={{ padding: 6 }}>
-                <StarIcon color={item.favorite ? colors.accent : colors.neutral500} filled={!!item.favorite} />
+                <StarIcon color={item.favorite ? colors.accent : colors.neutral500} filled={!!item.favorite} size={ICON.inline} />
               </TouchableOpacity>
             ) : (
               !!item.key && <Tag label={item.key} colors={colors} radius={radius} />
@@ -155,7 +156,7 @@ export default function LibraryScreen() {
         onPress={() => navigation.navigate('Add')}
         style={[styles.fab, { borderColor: colors.accent, backgroundColor: colors.accent }]}
       >
-        <PlusIcon color={colors.accent100} size={22} />
+        <PlusIcon color={colors.accent100} size={ICON.button} />
       </TouchableOpacity>
     </View>
   );
@@ -171,7 +172,7 @@ function Tag({ label, accent, colors, radius }: any) {
         backgroundColor: accent ? colors.accent : colors.neutral800,
       }}
     >
-      <Text style={{ fontSize: 13, color: accent ? colors.accent100 : colors.text }}>{label}</Text>
+      <Text style={{ fontSize: TYPE.tiny, color: accent ? colors.accent100 : colors.text }}>{label}</Text>
     </View>
   );
 }
@@ -179,15 +180,15 @@ function Tag({ label, accent, colors, radius }: any) {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   headerRow: {
-    paddingTop: 54,
+    paddingTop: LAYOUT.top,
     paddingHorizontal: 20,
     paddingBottom: 4,
     flexDirection: 'row',
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  h1: { fontSize: 26, fontWeight: '500' },
-  iconBtn: { width: 36, height: 36, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  h1: { fontSize: TYPE.title, fontWeight: '500' },
+  iconBtn: { width: LAYOUT.iconButton, height: LAYOUT.iconButton, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   sortRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -201,9 +202,9 @@ const styles = StyleSheet.create({
     position: 'absolute',
     right: 20,
     bottom: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
+    width: LAYOUT.round,
+    height: LAYOUT.round,
+    borderRadius: LAYOUT.round / 2,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
@@ -216,6 +217,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '80%',
+    maxWidth: 360,
     borderRadius: 16,
     paddingVertical: 4,
     overflow: 'hidden',

@@ -1,8 +1,11 @@
 import React from 'react';
+import { View } from 'react-native';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { ThemeProvider, useTheme } from './src/theme/ThemeContext';
+import { ICON, LAYOUT } from './src/theme/tokens';
 
 import LibraryScreen from './src/screens/LibraryScreen';
 import LibrarySearchScreen from './src/screens/LibrarySearchScreen';
@@ -34,50 +37,60 @@ function Tabs() {
       <Tab.Screen
         name="Library"
         component={LibraryScreen}
-        options={{ tabBarIcon: ({ color, size }) => <LibraryTabIcon color={color} size={size} /> }}
+        options={{ tabBarIcon: ({ color }) => <LibraryTabIcon color={color} size={ICON.tab} /> }}
       />
       <Tab.Screen
         name="LibrarySearch"
         component={LibrarySearchScreen}
-        options={{ title: 'Search', tabBarIcon: ({ color, size }) => <SearchTabIcon color={color} size={size} /> }}
+        options={{ title: 'Search', tabBarIcon: ({ color }) => <SearchTabIcon color={color} size={ICON.tab} /> }}
       />
       <Tab.Screen
         name="Collections"
         component={CollectionsScreen}
-        options={{ tabBarIcon: ({ color, size }) => <CollectionsTabIcon color={color} size={size} /> }}
+        options={{ tabBarIcon: ({ color }) => <CollectionsTabIcon color={color} size={ICON.tab} /> }}
       />
       <Tab.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{ tabBarIcon: ({ color, size }) => <SettingsTabIcon color={color} size={size} /> }}
+        options={{ tabBarIcon: ({ color }) => <SettingsTabIcon color={color} size={ICON.tab} /> }}
       />
     </Tab.Navigator>
   );
 }
 
 function RootNavigator() {
-  const { colors, loaded } = useTheme();
+  const { colors, loaded, wide } = useTheme();
   if (!loaded) return null;
+  // Phone: full width. Wide window: one centred column with thin side borders, like Sitness.
+  const column = wide
+    ? { maxWidth: LAYOUT.maxWidth, borderLeftWidth: 1, borderRightWidth: 1, borderColor: colors.divider }
+    : null;
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
-        <Stack.Screen name="Tabs" component={Tabs} />
-        <Stack.Screen name="WebSearch" component={WebSearchScreen} />
-        <Stack.Screen name="Browser" component={BrowserScreen} />
-        <Stack.Screen name="Add" component={AddScreen} />
-        <Stack.Screen name="Edit" component={EditScreen} />
-        <Stack.Screen name="Detail" component={DetailScreen} />
-        <Stack.Screen name="CollectionDetail" component={CollectionDetailScreen} />
-        <Stack.Screen name="AddToCollection" component={AddToCollectionScreen} />
-      </Stack.Navigator>
-    </NavigationContainer>
+    <View style={{ flex: 1, backgroundColor: colors.outer }}>
+      <View style={[{ flex: 1, width: '100%', alignSelf: 'center', backgroundColor: colors.bg, overflow: 'hidden' }, column]}>
+        <NavigationContainer>
+          <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+            <Stack.Screen name="Tabs" component={Tabs} />
+            <Stack.Screen name="WebSearch" component={WebSearchScreen} />
+            <Stack.Screen name="Browser" component={BrowserScreen} />
+            <Stack.Screen name="Add" component={AddScreen} />
+            <Stack.Screen name="Edit" component={EditScreen} />
+            <Stack.Screen name="Detail" component={DetailScreen} />
+            <Stack.Screen name="CollectionDetail" component={CollectionDetailScreen} />
+            <Stack.Screen name="AddToCollection" component={AddToCollectionScreen} />
+          </Stack.Navigator>
+        </NavigationContainer>
+      </View>
+    </View>
   );
 }
 
 export default function App() {
   return (
-    <ThemeProvider>
-      <RootNavigator />
-    </ThemeProvider>
+    <SafeAreaProvider>
+      <ThemeProvider>
+        <RootNavigator />
+      </ThemeProvider>
+    </SafeAreaProvider>
   );
 }

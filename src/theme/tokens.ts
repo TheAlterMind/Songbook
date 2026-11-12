@@ -1,3 +1,5 @@
+import { Platform, StatusBar } from 'react-native';
+
 // Palette borrowed from the Sitness app: a violet-first accent set, a near-black dark theme
 // tinted with the accent, flat grey surfaces and one 16px corner radius everywhere.
 
@@ -31,6 +33,7 @@ export type Colors = {
   accent100: string; // text and icons drawn on the accent
   accent800: string;
   accent: string;
+  outer: string; // margin around the column on wide windows
 };
 
 export function darkColors(accent: string): Colors {
@@ -49,6 +52,7 @@ export function darkColors(accent: string): Colors {
     neutral800: well,
     accent100: '#0B0814',
     accent800: tint(0x00, accent, 0.35),
+    outer: tint(0x00, accent, 0.1),
     accent,
   };
 }
@@ -66,8 +70,36 @@ export function lightColors(accent: string): Colors {
     neutral800: '#E8EEF0',
     accent100: '#0B0814',
     accent800: '#E9E3FB',
+    outer: '#E9EEF0',
     accent,
   };
 }
 
 export const RADIUS = { sm: 16, md: 16, lg: 16 };
+
+/** Sitness's type scale (Ant Design Mobile sizes as Sitness uses them), at the 16px base. */
+export const TYPE = {
+  title: 22, // screen titles (Sitness .page-title / .title)
+  body: 17, // list rows, inputs, buttons (adm list item / button)
+  label: 15, // section headers (adm list header)
+  small: 13, // secondary lines, descriptions (adm description)
+  tiny: 12, // tags, small print (Sitness .small)
+};
+
+/** Sitness's icon sizes. */
+export const ICON = {
+  button: 24, // icons in the header's plain icon buttons
+  tab: 22, // bottom tab bar
+  inline: 20, // icons beside text
+  small: 16, // chevrons and field icons
+};
+
+export const LAYOUT = {
+  // Space above a screen's header: the status bar on a phone, a small gap in a browser.
+  top: Platform.OS === 'web' ? 8 : (StatusBar.currentHeight ?? 44) + 8,
+  headerHeight: 56, // Sitness .head / .page-head
+  iconButton: 44, // Sitness .icon-btn
+  round: 56, // Sitness .round (circular buttons)
+  maxWidth: 720, // Sitness .page.scrolling column
+  wideAt: 700, // framed column from this width (in 16px units)
+};

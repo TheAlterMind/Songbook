@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, LAYOUT } from '../theme/tokens';
 import { getAllCollections, getSongCollectionIds, setSongInCollection, Collection } from '../db/Database';
 
 export default function AddToCollectionScreen() {
@@ -31,11 +32,11 @@ export default function AddToCollectionScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={{ paddingTop: 54, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
+      <View style={{ paddingTop: LAYOUT.top, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: colors.accent, fontSize: 17, fontWeight: '600' }}>Done</Text>
+          <Text style={{ color: colors.accent, fontSize: TYPE.body, fontWeight: '600' }}>Done</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontSize: 17, fontWeight: '500' }}>
+        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontSize: TYPE.body, fontWeight: '500' }}>
           Add to collection
         </Text>
         <View style={{ width: 44 }} />
@@ -63,8 +64,8 @@ export default function AddToCollectionScreen() {
                 alignItems: 'center',
               }}
             >
-              <Text style={{ fontSize: 17, color: colors.text }}>{item.name}</Text>
-              <Text style={{ color: checked ? colors.accent : colors.neutral500, fontSize: 18 }}>
+              <Text style={{ fontSize: TYPE.body, color: colors.text }}>{item.name}</Text>
+              <Text style={{ color: checked ? colors.accent : colors.neutral500, fontSize: TYPE.body }}>
                 {checked ? '\u2713' : '\u25CB'}
               </Text>
             </TouchableOpacity>

@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
+import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, setFavorite, Song } from '../db/Database';
 import { BackChevronIcon, CollectionsTabIcon, StarIcon, EditPencilIcon } from '../components/Icons';
 
@@ -37,10 +38,10 @@ export default function DetailScreen() {
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
           style={styles.iconBtn}
         >
-          <BackChevronIcon color={colors.text} size={18} />
+          <BackChevronIcon color={colors.text} size={ICON.button} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flex: 1, minWidth: 0, paddingVertical: 6 }}>
-          <Text style={{ fontSize: 21, fontWeight: '500', color: colors.text }} numberOfLines={1}>
+          <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }} numberOfLines={1}>
             {song.title}
           </Text>
         </TouchableOpacity>
@@ -48,16 +49,16 @@ export default function DetailScreen() {
           onPress={() => navigation.navigate('AddToCollection', { songId })}
           style={styles.iconBtn}
         >
-          <CollectionsTabIcon color={colors.accent} size={18} />
+          <CollectionsTabIcon color={colors.accent} size={ICON.button} />
         </TouchableOpacity>
         <TouchableOpacity onPress={toggleFav} style={styles.iconBtn}>
-          <StarIcon color={song.favorite ? colors.accent : colors.neutral500} filled={!!song.favorite} size={19} />
+          <StarIcon color={song.favorite ? colors.accent : colors.neutral500} filled={!!song.favorite} size={ICON.button} />
         </TouchableOpacity>
         <TouchableOpacity
           onPress={() => navigation.navigate('Edit', { songId })}
           style={styles.iconBtn}
         >
-          <EditPencilIcon color={colors.accent} size={18} />
+          <EditPencilIcon color={colors.accent} size={ICON.button} />
         </TouchableOpacity>
       </View>
 
@@ -68,14 +69,14 @@ export default function DetailScreen() {
             hitSlop={{ top: 8, bottom: 8 }}
             style={[styles.smallBtn, { flex: 1, borderColor: colors.divider }]}
           >
-            <Text style={{ color: colors.accent, fontSize: 14 }}>A−</Text>
+            <Text style={{ color: colors.accent, fontSize: TYPE.small }}>A−</Text>
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => setFontSize((f) => Math.min(30, f + 1))}
             hitSlop={{ top: 8, bottom: 8 }}
             style={[styles.smallBtn, { flex: 1, borderColor: colors.divider }]}
           >
-            <Text style={{ color: colors.accent, fontSize: 17 }}>A+</Text>
+            <Text style={{ color: colors.accent, fontSize: TYPE.body }}>A+</Text>
           </TouchableOpacity>
         </View>
         {hasChords && (
@@ -92,7 +93,7 @@ export default function DetailScreen() {
               backgroundColor: chordsOn ? colors.accent + '22' : 'transparent',
             }}
           >
-            <Text style={{ fontSize: 14, color: chordsOn ? colors.accent : colors.neutral500 }}>Chords {chordsOn ? 'On' : 'Off'}</Text>
+            <Text style={{ fontSize: TYPE.small, color: chordsOn ? colors.accent : colors.neutral500 }}>Chords {chordsOn ? 'On' : 'Off'}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -112,8 +113,9 @@ export default function DetailScreen() {
 }
 
 const styles = StyleSheet.create({
-  header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: { width: 36, height: 36, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  // Sitness .page-head: icon buttons sit edge to edge, their own padding gives the side margin.
+  header: { paddingTop: LAYOUT.top, paddingHorizontal: 6, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 0 },
+  iconBtn: { width: LAYOUT.iconButton, height: LAYOUT.iconButton, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   toolbar: { paddingHorizontal: 20, marginTop: 4 },
   smallBtn: { width: 48, height: 36, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

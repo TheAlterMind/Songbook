@@ -2,6 +2,7 @@ import React, { useCallback, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
+import { TYPE, LAYOUT } from '../theme/tokens';
 import { getAllSongs } from '../db/Database';
 import { exportLibrary, importLibrary } from '../utils/exportImport';
 
@@ -35,18 +36,18 @@ export default function SettingsScreen() {
   };
 
   return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20, paddingTop: 54, gap: 18 }}>
-      <Text style={{ fontSize: 26, fontWeight: '500', color: colors.text }}>Settings</Text>
+    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20, paddingTop: LAYOUT.top, gap: 18 }}>
+      <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Settings</Text>
 
       <Section title="Reading" colors={colors}>
         <Card colors={colors} radius={radius}>
           <Row>
-            <Text style={{ fontSize: 16, color: colors.text }}>Default text size</Text>
+            <Text style={{ fontSize: TYPE.body, color: colors.text }}>Default text size</Text>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <StepBtn onPress={() => updateSettings({ defaultFontSize: Math.max(16, settings.defaultFontSize - 1) })} colors={colors}>
                 −
               </StepBtn>
-              <Text style={{ fontSize: 15, color: colors.neutral500, width: 20, textAlign: 'center' }}>
+              <Text style={{ fontSize: TYPE.label, color: colors.neutral500, width: 20, textAlign: 'center' }}>
                 {settings.defaultFontSize}
               </Text>
               <StepBtn onPress={() => updateSettings({ defaultFontSize: Math.min(26, settings.defaultFontSize + 1) })} colors={colors}>
@@ -56,7 +57,7 @@ export default function SettingsScreen() {
           </Row>
           <Divider colors={colors} />
           <Row>
-            <Text style={{ fontSize: 16, color: colors.text }}>Show chords by default</Text>
+            <Text style={{ fontSize: TYPE.body, color: colors.text }}>Show chords by default</Text>
             <Toggle value={settings.defaultChordsOn} onToggle={() => updateSettings({ defaultChordsOn: !settings.defaultChordsOn })} colors={colors} />
           </Row>
         </Card>
@@ -64,7 +65,7 @@ export default function SettingsScreen() {
 
       <Section title="Appearance" colors={colors}>
         <Card colors={colors} radius={radius}>
-          <Text style={{ fontSize: 16, color: colors.text, marginBottom: 8 }}>Accent color</Text>
+          <Text style={{ fontSize: TYPE.body, color: colors.text, marginBottom: 8 }}>Accent color</Text>
           <View style={{ flexDirection: 'row', gap: 10 }}>
             {ACCENT_OPTIONS.map((opt) => (
               <TouchableOpacity
@@ -83,7 +84,7 @@ export default function SettingsScreen() {
           </View>
           <Divider colors={colors} />
           <Row>
-            <Text style={{ fontSize: 16, color: colors.text }}>Light version</Text>
+            <Text style={{ fontSize: TYPE.body, color: colors.text }}>Light version</Text>
             <Toggle value={settings.lightMode} onToggle={() => updateSettings({ lightMode: !settings.lightMode })} colors={colors} />
           </Row>
         </Card>
@@ -91,10 +92,10 @@ export default function SettingsScreen() {
 
       <Section title="Library" colors={colors}>
         <Card colors={colors} radius={radius}>
-          <Text style={{ fontSize: 16, color: colors.text }}>
+          <Text style={{ fontSize: TYPE.body, color: colors.text }}>
             {songCount} {songCount === 1 ? 'song saved' : 'songs saved'}
           </Text>
-          <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }}>
+          <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }}>
             Paste lyrics from anywhere, then tidy them up in the editor.
           </Text>
         </Card>
@@ -115,7 +116,7 @@ export default function SettingsScreen() {
 function Section({ title, colors, children }: any) {
   return (
     <View>
-      <Text style={{ color: colors.neutral500, fontSize: 14, letterSpacing: 1, textTransform: 'uppercase', marginBottom: 8 }}>
+      <Text style={{ color: colors.neutral500, fontSize: TYPE.label, marginBottom: 8 }}>
         {title}
       </Text>
       {children}
