@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image } from 'react-native';
+import { View, Image } from 'react-native';
+import { Text } from './Typography';
 import { useTheme } from '../theme/ThemeContext';
 
 /** Album cover, or a quiet square with the song's first letter while there is none. */

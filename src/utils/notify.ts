@@ -10,3 +10,15 @@ export function notify(title: string, message?: string) {
 export function errorText(e: unknown): string {
   return (e as any)?.message || 'Something went wrong.';
 }
+
+/** Asks for a go-ahead before something that can't be undone. The browser's confirm on web, an alert on a phone. */
+export function confirmThen(title: string, message: string, confirmText: string, run: () => void) {
+  if (Platform.OS === 'web') {
+    if (window.confirm(`${title}\n\n${message}`)) run();
+    return;
+  }
+  Alert.alert(title, message, [
+    { text: 'Cancel', style: 'cancel' },
+    { text: confirmText, style: 'destructive', onPress: run },
+  ]);
+}

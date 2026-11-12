@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import { Text } from '../components/Typography';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, setFavorite, Song } from '../db/Database';
@@ -20,6 +22,17 @@ export default function DetailScreen() {
     useCallback(() => {
       getSong(songId).then((s) => setSong(s));
     }, [songId])
+  );
+
+  // Keep the screen on while this song is on screen, if asked to.
+  useFocusEffect(
+    useCallback(() => {
+      if (!settings.keepAwake) return;
+      activateKeepAwakeAsync('song').catch(() => {});
+      return () => {
+        deactivateKeepAwake('song').catch(() => {});
+      };
+    }, [settings.keepAwake])
   );
 
   if (!song) return null;

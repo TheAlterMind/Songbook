@@ -3,8 +3,9 @@ import { Song, setSongCover } from '../db/Database';
 
 // Album covers. Deezer's search API is keyless and returns the cover with each track; MusicBrainz plus the
 // Cover Art Archive (also keyless) is the fallback. Only the song title, artist and album are sent, as the
-// search text. Browsers can't set User-Agent, and Deezer doesn't allow browser (CORS) requests, so on web
-// Deezer may fail and MusicBrainz does the work.
+// search text. Browsers can't set User-Agent, and Deezer doesn't allow browser (CORS) requests (its only
+// browser route, JSONP, would run Deezer's script inside the page that holds the library), so on web
+// MusicBrainz does all the work.
 const CLIENT = 'Songbook/1.0 (personal lyrics app)';
 const headers: Record<string, string> = Platform.OS === 'web' ? {} : { 'User-Agent': CLIENT };
 
@@ -82,7 +83,8 @@ async function musicBrainz(title: string, artist: string): Promise<string> {
 export async function findCover(title: string, artist: string): Promise<string | null> {
   if (!title.trim() || !artist.trim()) return '';
   let failed = false;
-  for (const source of [deezer, musicBrainz]) {
+  const sources = Platform.OS === 'web' ? [musicBrainz] : [deezer, musicBrainz];
+  for (const source of sources) {
     try {
       const url = await source(title, artist);
       if (url) return url;

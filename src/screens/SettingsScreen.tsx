@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { Text } from '../components/Typography';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
 import { TYPE } from '../theme/tokens';
@@ -8,11 +9,19 @@ import { ListItem, ListSection, OptionSheet, Switch, TonalButton } from '../comp
 import { getAllSongs } from '../db/Database';
 import { exportLibrary, importLibrary } from '../utils/exportImport';
 import ScreenHeader from '../components/ScreenHeader';
+import { FONT_CHOICES } from '../theme/fonts';
+import { confirmThen } from '../utils/notify';
 
-type Sheet = null | 'accent' | 'scale';
+type Sheet = null | 'accent' | 'theme' | 'font' | 'scale';
+
+const THEME_CHOICES = [
+  { label: 'Follow system', value: 'system' },
+  { label: 'Light', value: 'light' },
+  { label: 'Dark', value: 'dark' },
+];
 
 export default function SettingsScreen() {
-  const { colors, settings, updateSettings } = useTheme();
+  const { colors, settings, updateSettings, resetSettings } = useTheme();
   const [songCount, setSongCount] = useState(0);
   const [sheet, setSheet] = useState<Sheet>(null);
 
@@ -41,6 +50,8 @@ export default function SettingsScreen() {
     }
   };
 
+  const themeLabel = (THEME_CHOICES.find((c) => c.value === settings.theme) ?? THEME_CHOICES[0]).label;
+  const fontLabel = (FONT_CHOICES.find((c) => c.value === settings.font) ?? FONT_CHOICES[0]).label;
   const accentLabel = (ACCENT_OPTIONS.find((o) => o.value === settings.accentColor) ?? ACCENT_OPTIONS[0]).label;
   const scaleLabel = (SCALE_CHOICES.find((c) => c.value === settings.uiScale) ?? SCALE_CHOICES[1]).label;
 
@@ -66,6 +77,11 @@ export default function SettingsScreen() {
           title="Show chords by default"
           extra={<Switch value={settings.defaultChordsOn} onChange={(v) => updateSettings({ defaultChordsOn: v })} />}
         />
+        <ListItem
+          title="Keep the screen awake"
+          description="While a song is open, so it doesn't dim mid-song."
+          extra={<Switch value={settings.keepAwake} onChange={(v) => updateSettings({ keepAwake: v })} />}
+        />
       </ListSection>
 
       <ListSection header="Display">
@@ -79,10 +95,7 @@ export default function SettingsScreen() {
           }
           onPress={() => setSheet('accent')}
         />
-        <ListItem
-          title="Light version"
-          extra={<Switch value={settings.lightMode} onChange={(v) => updateSettings({ lightMode: v })} />}
-        />
+        <ListItem title="Theme" extra={themeLabel} onPress={() => setSheet('theme')} />
         {CAN_SCALE && (
           <ListItem
             title="Interface size"
@@ -91,6 +104,12 @@ export default function SettingsScreen() {
             onPress={() => setSheet('scale')}
           />
         )}
+        <ListItem
+          title="Font"
+          description="The typeface used everywhere. Fonts come from your device, so they may look slightly different on other devices."
+          extra={fontLabel}
+          onPress={() => setSheet('font')}
+        />
       </ListSection>
 
       <ListSection header="Library">
@@ -104,9 +123,38 @@ export default function SettingsScreen() {
         <View style={{ padding: 12, gap: 8 }}>
           <TonalButton label="Export library" onPress={onExport} />
           <TonalButton label="Import from file" onPress={onImport} />
+          <TonalButton
+            label="Reset settings"
+            onPress={() =>
+              confirmThen('Reset all settings?', 'Everything returns to the defaults. Your songs and collections are kept.', 'Reset', resetSettings)
+            }
+          />
         </View>
       </ListSection>
 
+      <ListSection header="About">
+        <ListItem
+          title="Songbook 1.0"
+          description="Your songs stay on this device. Looking up lyrics and album covers sends the title and artist to LRCLIB, Deezer and MusicBrainz."
+        />
+      </ListSection>
+
+      <OptionSheet
+        visible={sheet === 'theme'}
+        title="Theme"
+        options={THEME_CHOICES}
+        value={settings.theme}
+        onPick={(v) => updateSettings({ theme: v as any })}
+        onClose={() => setSheet(null)}
+      />
+      <OptionSheet
+        visible={sheet === 'font'}
+        title="Font"
+        options={FONT_CHOICES.map((c) => ({ label: c.label, value: c.value }))}
+        value={settings.font}
+        onPick={(v) => updateSettings({ font: v })}
+        onClose={() => setSheet(null)}
+      />
       <OptionSheet
         visible={sheet === 'accent'}
         title="Accent color"

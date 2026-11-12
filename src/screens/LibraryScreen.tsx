@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, Text, TextInput, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert } from 'react-native';
+import { Text, TextInput } from '../components/Typography';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';

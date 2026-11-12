@@ -1,13 +1,23 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { useColorScheme } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useInterfaceScale } from './scale';
 import { ACCENT_OPTIONS, Colors, darkColors, lightColors, RADIUS } from './tokens';
 
 const SETTINGS_KEY = 'lyrics_library_settings_v1';
 
+export type Theme = 'system' | 'light' | 'dark';
+
 export type Settings = {
   accentColor: string;
+  /** What the person chose. */
+  theme: Theme;
+  /** Whether the light palette is in use right now (follows the system when theme is 'system'). Derived, not saved. */
   lightMode: boolean;
+  /** A value from FONT_CHOICES. */
+  font: string;
+  /** Keep the screen on while a song is open. */
+  keepAwake: boolean;
   defaultFontSize: number;
   defaultChordsOn: boolean;
   sortBy: string;
@@ -19,7 +29,10 @@ export type Settings = {
 
 const DEFAULT_SETTINGS: Settings = {
   accentColor: ACCENT_OPTIONS[0].value,
+  theme: 'dark',
   lightMode: false,
+  font: 'system',
+  keepAwake: false,
   defaultFontSize: 19,
   defaultChordsOn: false,
   sortBy: 'title',
@@ -33,6 +46,8 @@ type ThemeContextType = {
   radius: typeof RADIUS;
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
+  /** Puts every setting back to its default. */
+  resetSettings: () => void;
   loaded: boolean;
   /** Wide window: the app sits in a framed, centred column. */
   wide: boolean;
@@ -41,16 +56,20 @@ type ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
+  const [stored, setStored] = useState<Settings>(DEFAULT_SETTINGS);
+  const system = useColorScheme();
   const [loaded, setLoaded] = useState(false);
-  const { wide } = useInterfaceScale(settings.uiScale);
+  const { wide } = useInterfaceScale(stored.uiScale);
 
   useEffect(() => {
     AsyncStorage.getItem(SETTINGS_KEY)
       .then((raw) => {
         if (raw) {
           try {
-            setSettings({ ...DEFAULT_SETTINGS, ...JSON.parse(raw) });
+            const saved = JSON.parse(raw);
+            // Before the Theme choice there was a Light version switch: keep what it was set to.
+            const theme: Theme = ['system', 'light', 'dark'].includes(saved.theme) ? saved.theme : saved.lightMode ? 'light' : 'dark';
+            setStored({ ...DEFAULT_SETTINGS, ...saved, theme });
           } catch {
             // corrupt settings blob — fall back to defaults rather than crash
           }
@@ -60,24 +79,29 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const updateSettings = (patch: Partial<Settings>) => {
-    setSettings((prev) => {
+    setStored((prev) => {
       const next = { ...prev, ...patch };
       AsyncStorage.setItem(SETTINGS_KEY, JSON.stringify(next)).catch(() => {});
       return next;
     });
   };
 
+  const resetSettings = () => updateSettings({ ...DEFAULT_SETTINGS });
+
+  const lightMode = stored.theme === 'system' ? system === 'light' : stored.theme === 'light';
+  const settings = useMemo(() => ({ ...stored, lightMode }), [stored, lightMode]);
+
   // An accent saved before the palette changed falls back to the default.
-  const accent = ACCENT_OPTIONS.some((o) => o.value === settings.accentColor)
-    ? settings.accentColor
+  const accent = ACCENT_OPTIONS.some((o) => o.value === stored.accentColor)
+    ? stored.accentColor
     : ACCENT_OPTIONS[0].value;
   const colors = useMemo(
-    () => (settings.lightMode ? lightColors(accent) : darkColors(accent)),
-    [settings.lightMode, accent]
+    () => (lightMode ? lightColors(accent) : darkColors(accent)),
+    [lightMode, accent]
   );
 
   return (
-    <ThemeContext.Provider value={{ colors, radius: RADIUS, settings, updateSettings, loaded, wide }}>
+    <ThemeContext.Provider value={{ colors, radius: RADIUS, settings, updateSettings, resetSettings, loaded, wide }}>
       {children}
     </ThemeContext.Provider>
   );

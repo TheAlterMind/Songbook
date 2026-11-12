@@ -2,7 +2,8 @@
 // (List mode="card", Switch, Picker/ActionSheet, Button "tonal"); the sizes here are the ones
 // it ends up with: 17px rows, 15px headers and values, 13px descriptions, 16px corners.
 import React from 'react';
-import { Modal, Pressable, Text, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { Modal, Pressable, TouchableOpacity, View, ViewStyle } from 'react-native';
+import { Text } from './Typography';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE } from '../theme/tokens';
 import { RightOutline } from './Icons';
