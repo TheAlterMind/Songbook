@@ -1,14 +1,19 @@
 import React, { useCallback, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Alert } from 'react-native';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
 import { TYPE, LAYOUT } from '../theme/tokens';
+import { CAN_SCALE, SCALE_CHOICES } from '../theme/scale';
+import { ListItem, ListSection, OptionSheet, Switch, TonalButton } from '../components/Controls';
 import { getAllSongs } from '../db/Database';
 import { exportLibrary, importLibrary } from '../utils/exportImport';
 
+type Sheet = null | 'accent' | 'scale';
+
 export default function SettingsScreen() {
-  const { colors, radius, settings, updateSettings } = useTheme();
+  const { colors, settings, updateSettings } = useTheme();
   const [songCount, setSongCount] = useState(0);
+  const [sheet, setSheet] = useState<Sheet>(null);
 
   useFocusEffect(
     useCallback(() => {
@@ -35,124 +40,105 @@ export default function SettingsScreen() {
     }
   };
 
-  return (
-    <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20, paddingTop: LAYOUT.top, gap: 18 }}>
-      <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Settings</Text>
+  const accentLabel = (ACCENT_OPTIONS.find((o) => o.value === settings.accentColor) ?? ACCENT_OPTIONS[0]).label;
+  const scaleLabel = (SCALE_CHOICES.find((c) => c.value === settings.uiScale) ?? SCALE_CHOICES[1]).label;
 
-      <Section title="Reading" colors={colors}>
-        <Card colors={colors} radius={radius}>
-          <Row>
-            <Text style={{ fontSize: TYPE.body, color: colors.text }}>Default text size</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-              <StepBtn onPress={() => updateSettings({ defaultFontSize: Math.max(16, settings.defaultFontSize - 1) })} colors={colors}>
-                −
-              </StepBtn>
-              <Text style={{ fontSize: TYPE.label, color: colors.neutral500, width: 20, textAlign: 'center' }}>
+  return (
+    <ScrollView
+      style={{ flex: 1, backgroundColor: colors.bg }}
+      contentContainerStyle={{ paddingHorizontal: 18, paddingTop: LAYOUT.top, paddingBottom: 24, gap: 12 }}
+    >
+      <View style={{ height: LAYOUT.headerHeight, justifyContent: 'center' }}>
+        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Settings</Text>
+      </View>
+
+      <ListSection header="Reading">
+        <ListItem
+          title="Default text size"
+          extra={
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <StepBtn label="−" onPress={() => updateSettings({ defaultFontSize: Math.max(16, settings.defaultFontSize - 1) })} />
+              <Text style={{ fontSize: TYPE.label, color: colors.text, width: 24, textAlign: 'center' }}>
                 {settings.defaultFontSize}
               </Text>
-              <StepBtn onPress={() => updateSettings({ defaultFontSize: Math.min(26, settings.defaultFontSize + 1) })} colors={colors}>
-                +
-              </StepBtn>
+              <StepBtn label="+" onPress={() => updateSettings({ defaultFontSize: Math.min(26, settings.defaultFontSize + 1) })} />
             </View>
-          </Row>
-          <Divider colors={colors} />
-          <Row>
-            <Text style={{ fontSize: TYPE.body, color: colors.text }}>Show chords by default</Text>
-            <Toggle value={settings.defaultChordsOn} onToggle={() => updateSettings({ defaultChordsOn: !settings.defaultChordsOn })} colors={colors} />
-          </Row>
-        </Card>
-      </Section>
+          }
+        />
+        <ListItem
+          title="Show chords by default"
+          extra={<Switch value={settings.defaultChordsOn} onChange={(v) => updateSettings({ defaultChordsOn: v })} />}
+        />
+      </ListSection>
 
-      <Section title="Appearance" colors={colors}>
-        <Card colors={colors} radius={radius}>
-          <Text style={{ fontSize: TYPE.body, color: colors.text, marginBottom: 8 }}>Accent color</Text>
-          <View style={{ flexDirection: 'row', gap: 10 }}>
-            {ACCENT_OPTIONS.map((opt) => (
-              <TouchableOpacity
-                key={opt.value}
-                onPress={() => updateSettings({ accentColor: opt.value })}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  backgroundColor: opt.value,
-                  borderWidth: 2,
-                  borderColor: opt.value === settings.accentColor ? colors.text : 'transparent',
-                }}
-              />
-            ))}
-          </View>
-          <Divider colors={colors} />
-          <Row>
-            <Text style={{ fontSize: TYPE.body, color: colors.text }}>Light version</Text>
-            <Toggle value={settings.lightMode} onToggle={() => updateSettings({ lightMode: !settings.lightMode })} colors={colors} />
-          </Row>
-        </Card>
-      </Section>
+      <ListSection header="Display">
+        <ListItem
+          title="Accent color"
+          extra={
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <View style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: colors.accent }} />
+              <Text style={{ fontSize: TYPE.label, color: colors.neutral500 }}>{accentLabel}</Text>
+            </View>
+          }
+          onPress={() => setSheet('accent')}
+        />
+        <ListItem
+          title="Light version"
+          extra={<Switch value={settings.lightMode} onChange={(v) => updateSettings({ lightMode: v })} />}
+        />
+        {CAN_SCALE && (
+          <ListItem
+            title="Interface size"
+            description="Makes everything larger or smaller. Automatic follows the size of the window, so a big screen gets a bigger interface."
+            extra={scaleLabel}
+            onPress={() => setSheet('scale')}
+          />
+        )}
+      </ListSection>
 
-      <Section title="Library" colors={colors}>
-        <Card colors={colors} radius={radius}>
-          <Text style={{ fontSize: TYPE.body, color: colors.text }}>
-            {songCount} {songCount === 1 ? 'song saved' : 'songs saved'}
-          </Text>
-          <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }}>
-            Paste lyrics from anywhere, then tidy them up in the editor.
-          </Text>
-        </Card>
-      </Section>
+      <ListSection header="Library">
+        <ListItem
+          title={`${songCount} ${songCount === 1 ? 'song saved' : 'songs saved'}`}
+          description="Paste lyrics from anywhere, then tidy them up in the editor."
+        />
+      </ListSection>
 
-      <Section title="Data" colors={colors}>
-        <TouchableOpacity onPress={onExport} style={[styles.blockBtn, { borderColor: colors.divider }]}>
-          <Text style={{ color: colors.text }}>Export library</Text>
-        </TouchableOpacity>
-        <TouchableOpacity onPress={onImport} style={[styles.blockBtn, { borderColor: colors.divider, marginTop: 8 }]}>
-          <Text style={{ color: colors.text }}>Import from file</Text>
-        </TouchableOpacity>
-      </Section>
+      <ListSection header="Data">
+        <View style={{ padding: 12, gap: 8 }}>
+          <TonalButton label="Export library" onPress={onExport} />
+          <TonalButton label="Import from file" onPress={onImport} />
+        </View>
+      </ListSection>
+
+      <OptionSheet
+        visible={sheet === 'accent'}
+        title="Accent color"
+        options={ACCENT_OPTIONS.map((o) => ({ label: o.label, value: o.value, swatch: o.value }))}
+        value={settings.accentColor}
+        onPick={(v) => updateSettings({ accentColor: v })}
+        onClose={() => setSheet(null)}
+      />
+      <OptionSheet
+        visible={sheet === 'scale'}
+        title="Interface size"
+        options={SCALE_CHOICES}
+        value={settings.uiScale}
+        onPick={(v) => updateSettings({ uiScale: v })}
+        onClose={() => setSheet(null)}
+      />
     </ScrollView>
   );
 }
 
-function Section({ title, colors, children }: any) {
-  return (
-    <View>
-      <Text style={{ color: colors.neutral500, fontSize: TYPE.label, marginBottom: 8 }}>
-        {title}
-      </Text>
-      {children}
-    </View>
-  );
-}
-function Card({ colors, radius, children }: any) {
-  return <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, gap: 14 }}>{children}</View>;
-}
-function Row({ children }: any) {
-  return <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>{children}</View>;
-}
-function Divider({ colors }: any) {
-  return <View style={{ height: 1, backgroundColor: colors.divider }} />;
-}
-function StepBtn({ onPress, colors, children }: any) {
+/** A small round stepper button (Sitness .round, scaled to a list row). */
+function StepBtn({ label, onPress }: { label: string; onPress: () => void }) {
+  const { colors } = useTheme();
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{ width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center' }}
+      style={{ width: 32, height: 32, borderRadius: 16, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center' }}
     >
-      <Text style={{ color: colors.text }}>{children}</Text>
+      <Text style={{ color: colors.text, fontSize: TYPE.body }}>{label}</Text>
     </TouchableOpacity>
   );
 }
-function Toggle({ value, onToggle, colors }: any) {
-  return (
-    <TouchableOpacity
-      onPress={onToggle}
-      style={{ width: 42, height: 24, borderRadius: 12, backgroundColor: value ? colors.accent : colors.neutral700, padding: 3, justifyContent: 'center' }}
-    >
-      <View style={{ width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', alignSelf: value ? 'flex-end' : 'flex-start' }} />
-    </TouchableOpacity>
-  );
-}
-
-const styles = StyleSheet.create({
-  blockBtn: { borderWidth: 1, borderRadius: 16, padding: 12, alignItems: 'center' },
-});

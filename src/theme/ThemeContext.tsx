@@ -13,6 +13,8 @@ export type Settings = {
   sortBy: string;
   sortDir: 'asc' | 'desc';
   viewMode: 'expanded' | 'compact';
+  /** Interface size multiplier (web): 0.85, 1, 1.25 or 1.5, as in Sitness. */
+  uiScale: number;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -23,6 +25,7 @@ const DEFAULT_SETTINGS: Settings = {
   sortBy: 'title',
   sortDir: 'asc',
   viewMode: 'expanded',
+  uiScale: 1,
 };
 
 type ThemeContextType = {
@@ -40,7 +43,7 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [loaded, setLoaded] = useState(false);
-  const { wide } = useInterfaceScale();
+  const { wide } = useInterfaceScale(settings.uiScale);
 
   useEffect(() => {
     AsyncStorage.getItem(SETTINGS_KEY)

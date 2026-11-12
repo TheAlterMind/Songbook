@@ -1,11 +1,12 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert, Modal, Pressable } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getAllSongs, setFavorite, deleteSong, duplicateSong, Song } from '../db/Database';
 import { sortSongs, SORT_OPTIONS } from '../utils/sort';
 import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, PlusIcon } from '../components/Icons';
+import { OptionSheet } from '../components/Controls';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
@@ -66,7 +67,7 @@ export default function LibraryScreen() {
         <Text style={[styles.h1, { color: colors.text }]}>Songbook</Text>
         <View style={{ flexDirection: 'row', gap: 8 }}>
           <TouchableOpacity onPress={toggleViewMode} style={styles.iconBtn}>
-            {isExpanded ? <ExpandedViewIcon color={colors.accent} size={ICON.inline} /> : <CompactViewIcon color={colors.accent} size={ICON.inline} />}
+            {isExpanded ? <ExpandedViewIcon color={colors.accent} size={ICON.button} /> : <CompactViewIcon color={colors.accent} size={ICON.button} />}
           </TouchableOpacity>
         </View>
       </View>
@@ -81,39 +82,23 @@ export default function LibraryScreen() {
           <Text style={{ fontSize: TYPE.label, fontWeight: '600', color: colors.accent, marginLeft: 6 }}>{sortLabel}</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={toggleSortDir} style={styles.iconBtn}>
-          {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} size={ICON.inline} /> : <SortDownIcon color={colors.accent} size={ICON.inline} />}
+          {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} size={ICON.button} /> : <SortDownIcon color={colors.accent} size={ICON.button} />}
         </TouchableOpacity>
       </View>
 
-      <Modal visible={sortMenuOpen} transparent animationType="fade" onRequestClose={() => setSortMenuOpen(false)}>
-        <Pressable style={styles.modalBackdrop} onPress={() => setSortMenuOpen(false)}>
-          <Pressable style={[styles.modalCard, { backgroundColor: colors.surface }]} onPress={() => {}}>
-            {SORT_OPTIONS.map((opt) => {
-              const selected = opt.value === settings.sortBy;
-              return (
-                <TouchableOpacity
-                  key={opt.value}
-                  onPress={() => {
-                    updateSettings({ sortBy: opt.value });
-                    setSortMenuOpen(false);
-                  }}
-                  style={[styles.modalRow, { borderBottomColor: colors.divider }]}
-                >
-                  <Text style={{ fontSize: TYPE.label, color: selected ? colors.accent : colors.text, fontWeight: selected ? '600' : '400' }}>
-                    {opt.label}
-                  </Text>
-                  {selected && <Text style={{ color: colors.accent, fontSize: TYPE.label }}>{'\u2713'}</Text>}
-                </TouchableOpacity>
-              );
-            })}
-          </Pressable>
-        </Pressable>
-      </Modal>
+      <OptionSheet
+        visible={sortMenuOpen}
+        title="Sort by"
+        options={SORT_OPTIONS}
+        value={settings.sortBy}
+        onPick={(v) => updateSettings({ sortBy: v })}
+        onClose={() => setSortMenuOpen(false)}
+      />
 
       <FlatList
         data={sorted}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 20, paddingBottom: 100, gap: isExpanded ? 8 : 2 }}
+        contentContainerStyle={{ padding: 18, paddingTop: 8, paddingBottom: 100, gap: isExpanded ? 8 : 2 }}
         ListEmptyComponent={
           <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 40 }}>No songs yet. Tap + to add one.</Text>
         }
@@ -179,12 +164,14 @@ function Tag({ label, accent, colors, radius }: any) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
+  // Sitness .head: a 56px row, 18px page margin; icon buttons reach into the right margin.
   headerRow: {
-    paddingTop: LAYOUT.top,
-    paddingHorizontal: 20,
-    paddingBottom: 4,
+    marginTop: LAYOUT.top,
+    height: LAYOUT.headerHeight,
+    paddingLeft: 18,
+    paddingRight: 8,
     flexDirection: 'row',
-    alignItems: 'baseline',
+    alignItems: 'center',
     justifyContent: 'space-between',
   },
   h1: { fontSize: TYPE.title, fontWeight: '500' },
@@ -193,41 +180,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    marginTop: 14,
-    marginBottom: 8,
+    paddingLeft: 18,
+    paddingRight: 8,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   fab: {
     position: 'absolute',
-    right: 20,
-    bottom: 20,
+    right: 18,
+    bottom: 18,
     width: LAYOUT.round,
     height: LAYOUT.round,
     borderRadius: LAYOUT.round / 2,
     borderWidth: 1.5,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalCard: {
-    width: '80%',
-    maxWidth: 360,
-    borderRadius: 16,
-    paddingVertical: 4,
-    overflow: 'hidden',
-  },
-  modalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 18,
-    borderBottomWidth: 1,
   },
 });

@@ -8,9 +8,20 @@ import { LAYOUT } from './tokens';
 // On web the scale is applied with CSS zoom on <html>, so every size (type, icons, spacing)
 // grows together, like Sitness's rem-based CSS. Native screens keep the base sizes.
 
+/** Sitness's "Interface size" choices: a multiplier on top of the automatic size. */
+export const SCALE_CHOICES = [
+  { label: 'Smaller', value: 0.85 },
+  { label: 'Automatic', value: 1 },
+  { label: 'Larger', value: 1.25 },
+  { label: 'Largest', value: 1.5 },
+];
+
+/** Interface scaling needs CSS zoom, so the setting only exists on web. */
+export const CAN_SCALE = Platform.OS === 'web';
+
 /** Root size for a window: 2% of its height, capped by 4.4% of its width, never below 16px. */
-export function rootSize(width: number, height: number): number {
-  return Math.min(Math.max(16, Math.min(0.02 * height, 0.044 * width)), 96);
+export function rootSize(width: number, height: number, user = 1): number {
+  return Math.min(Math.max(16, Math.min(0.02 * height, 0.044 * width)) * user, 96);
 }
 
 type Scale = { scale: number; wide: boolean };
@@ -19,7 +30,8 @@ function webWindow(): { width: number; height: number } {
   return { width: window.innerWidth, height: window.innerHeight };
 }
 
-export function useInterfaceScale(): Scale {
+export function useInterfaceScale(userScale = 1): Scale {
+  const user = SCALE_CHOICES.some((c) => c.value === userScale) ? userScale : 1;
   const native = useWindowDimensions();
   // On web, read the real window: the zoom changes what the page's own dimensions report.
   const [web, setWeb] = useState(() => (Platform.OS === 'web' ? webWindow() : null));
@@ -36,7 +48,7 @@ export function useInterfaceScale(): Scale {
   }, []);
 
   const { width, height } = web ?? native;
-  const scale = Platform.OS === 'web' ? rootSize(width, height) / 16 : 1;
+  const scale = CAN_SCALE ? rootSize(width, height, user) / 16 : 1;
 
   useEffect(() => {
     if (Platform.OS !== 'web') return;
