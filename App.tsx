@@ -1,6 +1,7 @@
 import React from 'react';
 import { View } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
@@ -59,7 +60,7 @@ function Tabs() {
 }
 
 function RootNavigator() {
-  const { colors, loaded, wide } = useTheme();
+  const { colors, loaded, wide, settings } = useTheme();
   if (!loaded) return null;
   // Phone: full width. Wide window: one centred column with thin side borders, like Sitness.
   const column = wide
@@ -67,6 +68,7 @@ function RootNavigator() {
     : null;
   return (
     <View style={{ flex: 1, backgroundColor: colors.outer }}>
+      <StatusBar style={settings.lightMode ? 'dark' : 'light'} />
       <View style={[{ flex: 1, width: '100%', alignSelf: 'center', backgroundColor: colors.bg, overflow: 'hidden' }, column]}>
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>

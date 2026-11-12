@@ -121,7 +121,7 @@ export default function AddScreen() {
           value={pasteText}
           onChangeText={onPasteChange}
           multiline
-          placeholder="Paste lyrics copied from a search result\u2026"
+          placeholder="Paste lyrics copied from a search result…"
           placeholderTextColor={colors.neutral500}
           style={[inputStyle(colors, radius), { minHeight: 150, textAlignVertical: 'top' }]}
         />
