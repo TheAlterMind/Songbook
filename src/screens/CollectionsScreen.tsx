@@ -48,7 +48,7 @@ export default function CollectionsScreen() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <Text style={{ fontSize: 30, fontWeight: '700', color: colors.text, paddingTop: 54, paddingHorizontal: 20 }}>
+      <Text style={{ fontSize: 26, fontWeight: '500', color: colors.text, paddingTop: 54, paddingHorizontal: 20 }}>
         Collections
       </Text>
       <FlatList
@@ -69,7 +69,7 @@ export default function CollectionsScreen() {
             }}
           >
             <View>
-              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }}>{item.name}</Text>
+              <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }}>{item.name}</Text>
               <Text style={{ fontSize: 14, color: colors.neutral500, marginTop: 2 }}>
                 {item.count} {item.count === 1 ? 'song' : 'songs'}
               </Text>

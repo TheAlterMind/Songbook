@@ -151,7 +151,7 @@ export default function EditScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={{ color: colors.accent }}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '600' }}>Edit song</Text>
+        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '500' }}>Edit song</Text>
         <TouchableOpacity onPress={onSave}>
           <Text style={{ color: colors.accent, fontWeight: '600' }}>Save</Text>
         </TouchableOpacity>
@@ -207,7 +207,7 @@ export default function EditScreen() {
                         padding: 4,
                         borderWidth: 1,
                         borderColor: colors.divider,
-                        borderRadius: 4,
+                        borderRadius: radius.md,
                         color: colors.accent,
                         marginBottom: 2,
                       }}
@@ -317,5 +317,5 @@ function inputStyle(colors: any, radius: any) {
 
 const styles = StyleSheet.create({
   header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center' },
-  tinyBtn: { width: 26, height: 26, borderRadius: 6, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  tinyBtn: { width: 26, height: 26, borderRadius: 13, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

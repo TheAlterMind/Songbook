@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { ACCENT_OPTIONS, DARK_COLORS, LIGHT_COLORS, RADIUS } from './tokens';
+import { ACCENT_OPTIONS, Colors, darkColors, lightColors, RADIUS } from './tokens';
 
 const SETTINGS_KEY = 'lyrics_library_settings_v1';
 
@@ -25,7 +25,7 @@ const DEFAULT_SETTINGS: Settings = {
 };
 
 type ThemeContextType = {
-  colors: typeof DARK_COLORS & { accent: string };
+  colors: Colors;
   radius: typeof RADIUS;
   settings: Settings;
   updateSettings: (patch: Partial<Settings>) => void;
@@ -60,8 +60,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const base = settings.lightMode ? LIGHT_COLORS : DARK_COLORS;
-  const colors = useMemo(() => ({ ...base, accent: settings.accentColor }), [base, settings.accentColor]);
+  // An accent saved before the palette changed falls back to the default.
+  const accent = ACCENT_OPTIONS.some((o) => o.value === settings.accentColor)
+    ? settings.accentColor
+    : ACCENT_OPTIONS[0].value;
+  const colors = useMemo(
+    () => (settings.lightMode ? lightColors(accent) : darkColors(accent)),
+    [settings.lightMode, accent]
+  );
 
   return (
     <ThemeContext.Provider value={{ colors, radius: RADIUS, settings, updateSettings, loaded }}>

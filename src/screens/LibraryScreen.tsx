@@ -123,7 +123,7 @@ export default function LibraryScreen() {
             style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: isExpanded ? 12 : 11 }]}
           >
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={{ fontSize: 17, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+              <Text style={{ fontSize: 17, fontWeight: '500', color: colors.text }} numberOfLines={1}>
                 {item.title}
               </Text>
               {isExpanded && (
@@ -153,9 +153,9 @@ export default function LibraryScreen() {
 
       <TouchableOpacity
         onPress={() => navigation.navigate('Add')}
-        style={[styles.fab, { borderColor: colors.accent, backgroundColor: colors.bg }]}
+        style={[styles.fab, { borderColor: colors.accent, backgroundColor: colors.accent }]}
       >
-        <PlusIcon color={colors.accent} size={20} />
+        <PlusIcon color={colors.accent100} size={22} />
       </TouchableOpacity>
     </View>
   );
@@ -186,8 +186,8 @@ const styles = StyleSheet.create({
     alignItems: 'baseline',
     justifyContent: 'space-between',
   },
-  h1: { fontSize: 30, fontWeight: '700' },
-  iconBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  h1: { fontSize: 26, fontWeight: '500' },
+  iconBtn: { width: 36, height: 36, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   sortRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     width: '80%',
-    borderRadius: 12,
+    borderRadius: 16,
     paddingVertical: 4,
     overflow: 'hidden',
   },

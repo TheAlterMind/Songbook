@@ -40,7 +40,7 @@ export default function DetailScreen() {
           <BackChevronIcon color={colors.text} size={18} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => navigation.goBack()} style={{ flex: 1, minWidth: 0, paddingVertical: 6 }}>
-          <Text style={{ fontSize: 21, fontWeight: '600', color: colors.text }} numberOfLines={1}>
+          <Text style={{ fontSize: 21, fontWeight: '500', color: colors.text }} numberOfLines={1}>
             {song.title}
           </Text>
         </TouchableOpacity>
@@ -113,7 +113,7 @@ export default function DetailScreen() {
 
 const styles = StyleSheet.create({
   header: { paddingTop: 54, paddingHorizontal: 16, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 8 },
-  iconBtn: { width: 36, height: 36, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  iconBtn: { width: 36, height: 36, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   toolbar: { paddingHorizontal: 20, marginTop: 4 },
-  smallBtn: { width: 48, height: 36, borderRadius: 8, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
+  smallBtn: { width: 48, height: 36, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

@@ -28,7 +28,7 @@ function Tabs() {
         headerShown: false,
         tabBarActiveTintColor: colors.accent,
         tabBarInactiveTintColor: colors.neutral500,
-        tabBarStyle: { backgroundColor: colors.bg, borderTopColor: colors.divider, borderTopWidth: 1 },
+        tabBarStyle: { backgroundColor: colors.menuBg, borderTopWidth: 0, elevation: 0, shadowOpacity: 0 },
       }}
     >
       <Tab.Screen

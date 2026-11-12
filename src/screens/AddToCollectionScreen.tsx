@@ -35,7 +35,7 @@ export default function AddToCollectionScreen() {
         <TouchableOpacity onPress={() => navigation.goBack()}>
           <Text style={{ color: colors.accent, fontSize: 17, fontWeight: '600' }}>Done</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontSize: 17, fontWeight: '600' }}>
+        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontSize: 17, fontWeight: '500' }}>
           Add to collection
         </Text>
         <View style={{ width: 44 }} />

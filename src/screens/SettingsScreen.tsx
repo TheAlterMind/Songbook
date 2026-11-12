@@ -36,7 +36,7 @@ export default function SettingsScreen() {
 
   return (
     <ScrollView style={{ flex: 1, backgroundColor: colors.bg }} contentContainerStyle={{ padding: 20, paddingTop: 54, gap: 18 }}>
-      <Text style={{ fontSize: 30, fontWeight: '700', color: colors.text }}>Settings</Text>
+      <Text style={{ fontSize: 26, fontWeight: '500', color: colors.text }}>Settings</Text>
 
       <Section title="Reading" colors={colors}>
         <Card colors={colors} radius={radius}>
@@ -135,7 +135,7 @@ function StepBtn({ onPress, colors, children }: any) {
   return (
     <TouchableOpacity
       onPress={onPress}
-      style={{ width: 30, height: 30, borderRadius: 8, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center' }}
+      style={{ width: 30, height: 30, borderRadius: 15, borderWidth: 1, borderColor: colors.divider, alignItems: 'center', justifyContent: 'center' }}
     >
       <Text style={{ color: colors.text }}>{children}</Text>
     </TouchableOpacity>
@@ -153,5 +153,5 @@ function Toggle({ value, onToggle, colors }: any) {
 }
 
 const styles = StyleSheet.create({
-  blockBtn: { borderWidth: 1, borderRadius: 8, padding: 12, alignItems: 'center' },
+  blockBtn: { borderWidth: 1, borderRadius: 16, padding: 12, alignItems: 'center' },
 });

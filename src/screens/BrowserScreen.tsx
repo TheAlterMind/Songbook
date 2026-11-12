@@ -28,7 +28,7 @@ export default function BrowserScreen() {
     <View style={{ flex: 1 }}>
       <WebView source={{ uri: url }} startInLoadingState />
       <TouchableOpacity onPress={saveFromClipboard} style={[styles.saveButton, { backgroundColor: colors.accent, borderRadius: radius.lg }]}>
-        <Text style={{ color: colors.bg, fontWeight: '600' }}>Save from clipboard</Text>
+        <Text style={{ color: colors.accent100, fontWeight: '500' }}>Save from clipboard</Text>
       </TouchableOpacity>
     </View>
   );

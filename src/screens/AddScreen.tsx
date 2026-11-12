@@ -52,7 +52,7 @@ export default function AddScreen() {
         <TouchableOpacity onPress={onCancel}>
           <Text style={{ color: colors.accent }}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '600' }}>Add song</Text>
+        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '500' }}>Add song</Text>
         <TouchableOpacity onPress={onSave}>
           <Text style={{ color: colors.accent, fontWeight: '600' }}>Save</Text>
         </TouchableOpacity>

@@ -6,6 +6,12 @@
       "runtimeExecutable": "npx",
       "runtimeArgs": ["expo", "start", "--web", "--port", "8081"],
       "port": 8081
+    },
+    {
+      "name": "sitness-web-reference",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["--prefix", "C:/Dev/Sitness/web", "run", "dev", "--", "--port", "5174", "--strictPort"],
+      "port": 5174
     }
   ]
 }
