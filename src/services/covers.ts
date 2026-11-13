@@ -20,10 +20,29 @@ function norm(s: string): string {
     .replace(/[^a-z0-9]+/g, '');
 }
 
+/** How many single-letter edits (insert, delete, change) turn a into b. */
+function editDistance(a: string, b: string): number {
+  let prev = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    const row = [i];
+    for (let j = 1; j <= b.length; j++) {
+      row[j] = Math.min(prev[j] + 1, row[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = row;
+  }
+  return prev[b.length];
+}
+
+// Names count as the same when one contains the other, or when they differ by a typo: one letter for names of
+// 5+ letters, two for 12+ (so "Breaking' In" still finds "Breakin' In"). Short names must match exactly.
 const same = (a: string, b: string) => {
   const x = norm(a);
   const y = norm(b);
-  return !!x && !!y && (x === y || x.includes(y) || y.includes(x));
+  if (!x || !y) return false;
+  if (x === y || x.includes(y) || y.includes(x)) return true;
+  const shortest = Math.min(x.length, y.length);
+  const allowed = shortest >= 12 ? 2 : shortest >= 5 ? 1 : 0;
+  return allowed > 0 && editDistance(x, y) <= allowed;
 };
 
 async function getJson(url: string, ms = 8000): Promise<any> {

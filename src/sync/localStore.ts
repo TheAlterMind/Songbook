@@ -7,7 +7,7 @@ export async function getSyncSnapshot(): Promise<Snapshot> {
   const songRows = await db.getAllAsync<any>('SELECT * FROM songs');
   const collectionRows = await db.getAllAsync<any>('SELECT * FROM collections');
   const linkRows = await db.getAllAsync<any>(
-    `SELECT c.uid AS collectionUid, s.uid AS songUid, l.updatedAt AS updatedAt, l.deleted AS deleted
+    `SELECT c.uid AS collectionUid, s.uid AS songUid, l.updatedAt AS updatedAt, l.deleted AS deleted, l.position AS position
      FROM collection_songs l
      JOIN collections c ON c.id = l.collection_id
      JOIN songs s ON s.id = l.song_id`
@@ -42,6 +42,7 @@ export async function getSyncSnapshot(): Promise<Snapshot> {
     songUid: r.songUid,
     updatedAt: r.updatedAt,
     deleted: !!r.deleted,
+    position: r.position ?? null,
   }));
   return { version: 2, exportedAt: Date.now(), songs, collections, links };
 }
@@ -120,10 +121,11 @@ export async function applySnapshot(merged: Snapshot): Promise<void> {
       const collectionId = collectionIds.get(l.collectionUid);
       if (songId == null || collectionId == null) continue;
       await db.runAsync(
-        `INSERT INTO collection_songs (collection_id, song_id, updatedAt, deleted) VALUES (?, ?, ?, ?)
-         ON CONFLICT(collection_id, song_id) DO UPDATE SET deleted=excluded.deleted, updatedAt=excluded.updatedAt
+        `INSERT INTO collection_songs (collection_id, song_id, updatedAt, deleted, position) VALUES (?, ?, ?, ?, ?)
+         ON CONFLICT(collection_id, song_id) DO UPDATE SET deleted=excluded.deleted, updatedAt=excluded.updatedAt,
+           position=COALESCE(excluded.position, collection_songs.position)
          WHERE excluded.updatedAt > collection_songs.updatedAt`,
-        collectionId, songId, l.updatedAt, l.deleted ? 1 : 0
+        collectionId, songId, l.updatedAt, l.deleted ? 1 : 0, l.position ?? null
       );
     }
     // A link missing from the merge was removed long ago; drop it for good.

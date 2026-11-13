@@ -4,11 +4,11 @@ import { Text, TextInput } from '../components/Typography';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
-import { getAllSongs, searchSongs, setFavorite, duplicateSong, Song } from '../db/Database';
+import { getAllSongs, searchSongs, setFavorite, Song } from '../db/Database';
 import { deleteWithUndo } from '../utils/undoDelete';
 import { onLibraryChanged } from '../utils/libraryEvents';
 import { useToast } from '../components/Toast';
-import SwipeRow, { SwipeRowHandle } from '../components/SwipeRow';
+import SwipeRow, { SwipeRowHandle, closeOpenRow, isAnyRowOpen } from '../components/SwipeRow';
 import { sortSongs, SORT_OPTIONS } from '../utils/sort';
 import { backfillCovers } from '../services/covers';
 import Cover from '../components/Cover';
@@ -19,6 +19,8 @@ export default function LibraryScreen() {
   const { colors, radius, settings, updateSettings } = useTheme();
   const { showUndo } = useToast();
   const rowRefs = useRef<Record<number, SwipeRowHandle | null>>({});
+  // True when the touch that is happening closed a swipe, so the row under it should not open its song.
+  const tapClosedSwipe = useRef(false);
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -92,22 +94,14 @@ export default function LibraryScreen() {
     load();
   };
 
-  const actionsFor = (song: Song) => [
-    {
-      label: song.favorite ? 'Unfavorite' : 'Favorite',
-      background: colors.accent,
-      color: colors.accent100,
-      onPress: () => toggleFav(song),
-    },
-    {
-      label: 'Duplicate',
-      background: colors.well,
-      color: colors.text,
-      onPress: async () => {
-        await duplicateSong(song.id as number);
-        load();
-      },
-    },
+  // Swipe right: Favorite at once, no button. Swipe left: shows Delete.
+  const swipeRightFor = (song: Song) => ({
+    label: song.favorite ? 'Unfavorite' : 'Favorite',
+    background: colors.accent,
+    color: colors.accent100,
+    onTrigger: () => toggleFav(song),
+  });
+  const rightActionsFor = (song: Song) => [
     {
       label: 'Delete',
       background: '#ff4d4f',
@@ -120,7 +114,15 @@ export default function LibraryScreen() {
   const isExpanded = settings.viewMode === 'expanded';
 
   return (
-    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+    <View
+      style={[styles.container, { backgroundColor: colors.bg }]}
+      // A touch anywhere closes an open swipe. It does not take the touch, so the Delete button still works; the
+      // tap is remembered so that a song row it lands on only closes the swipe instead of also opening the song.
+      onTouchStart={() => {
+        tapClosedSwipe.current = isAnyRowOpen();
+        closeOpenRow();
+      }}
+    >
       <View
         style={styles.headerRow}
         onLayout={(ev) => {
@@ -219,12 +221,14 @@ export default function LibraryScreen() {
           )
         }
         renderItem={({ item }) => (
-          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} actions={actionsFor(item)} radius={radius.md}>
+          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} swipeRight={swipeRightFor(item)} rightActions={rightActionsFor(item)} radius={radius.md}>
           <TouchableOpacity
             onPress={() => {
-              const row = rowRefs.current[item.id as number];
-              if (row?.isOpen()) row.close();
-              else navigation.navigate('Detail', { songId: item.id });
+              if (tapClosedSwipe.current) {
+                tapClosedSwipe.current = false;
+                return;
+              }
+              navigation.navigate('Detail', { songId: item.id });
             }}
             onLongPress={() => rowRefs.current[item.id as number]?.open()}
             style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: isExpanded ? 12 : 11 }]}

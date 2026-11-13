@@ -57,7 +57,7 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
         {screenTab('Settings')}
       </View>
       <TouchableOpacity
-        onPress={() => nav.navigate('Add')}
+        onPress={() => nav.navigate('WebSearch', { query: '' })}
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel="Add song"

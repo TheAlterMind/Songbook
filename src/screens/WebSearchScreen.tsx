@@ -67,7 +67,17 @@ export default function WebSearchScreen() {
         >
           <BackChevronIcon color={colors.text} size={ICON.button} />
         </TouchableOpacity>
-        <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Find lyrics</Text>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={{ flex: 1, minWidth: 0, paddingVertical: 6 }}>
+          <Text numberOfLines={1} style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Find lyrics</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          // A new, empty form each time, even if an earlier Add screen is still in the history.
+          onPress={() => navigation.push('Add')}
+          hitSlop={{ top: 8, bottom: 8, left: 6, right: 6 }}
+          style={{ paddingHorizontal: 12, paddingVertical: 8 }}
+        >
+          <Text style={{ fontSize: TYPE.body, color: colors.accent }}>Add manually</Text>
+        </TouchableOpacity>
       </View>
 
       <ScrollView contentContainerStyle={{ paddingHorizontal: 18, paddingBottom: 24, gap: 12 }} keyboardShouldPersistTaps="handled">

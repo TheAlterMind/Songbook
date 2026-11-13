@@ -191,6 +191,23 @@ async function initSchema(db: SQLite.SQLiteDatabase) {
       if (!linkCols.includes('updatedAt')) await db.execAsync('ALTER TABLE collection_songs ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0');
       if (!linkCols.includes('deleted')) await db.execAsync('ALTER TABLE collection_songs ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
     }
+    // Collections are ordered: every link has a place in its collection. Older libraries get the column, and
+    // their existing links are numbered in the order they were added.
+    if (!(await columnsOf('collection_songs')).includes('position')) {
+      await db.execAsync('ALTER TABLE collection_songs ADD COLUMN position INTEGER');
+    }
+    const unnumbered = await db.getAllAsync<{ collection_id: number }>(
+      'SELECT DISTINCT collection_id FROM collection_songs WHERE position IS NULL'
+    );
+    for (const { collection_id } of unnumbered) {
+      const links = await db.getAllAsync<{ song_id: number }>(
+        'SELECT song_id FROM collection_songs WHERE collection_id=? ORDER BY position IS NULL, position, updatedAt, song_id',
+        collection_id
+      );
+      for (let i = 0; i < links.length; i++) {
+        await db.runAsync('UPDATE collection_songs SET position=? WHERE collection_id=? AND song_id=?', i, collection_id, links[i].song_id);
+      }
+    }
     for (const table of ['songs', 'collections']) {
       const missing = await db.getAllAsync<{ id: number }>(`SELECT id FROM ${table} WHERE uid IS NULL`);
       for (const row of missing) await db.runAsync(`UPDATE ${table} SET uid=? WHERE id=?`, newUid(), row.id);
@@ -401,10 +418,30 @@ export async function getCollectionSongIds(collectionId: number): Promise<number
   const database = await getDb();
   const rows = await database.getAllAsync<{ song_id: number }>(
     `SELECT l.song_id FROM collection_songs l JOIN songs s ON s.id = l.song_id
-     WHERE l.collection_id=? AND l.deleted=0 AND s.deletedAt IS NULL`,
+     WHERE l.collection_id=? AND l.deleted=0 AND s.deletedAt IS NULL
+     ORDER BY l.position IS NULL, l.position, l.updatedAt, l.song_id`,
     collectionId
   );
   return rows.map((r) => r.song_id);
+}
+
+/** Saves a new order for a collection: songIds lists its songs from first to last. Only links that moved are touched. */
+export async function setCollectionOrder(collectionId: number, songIds: number[]): Promise<void> {
+  const database = await getDb();
+  const now = Date.now();
+  await database.withTransactionAsync(async () => {
+    for (let i = 0; i < songIds.length; i++) {
+      await database.runAsync(
+        'UPDATE collection_songs SET position=?, updatedAt=? WHERE collection_id=? AND song_id=? AND position IS NOT ?',
+        i,
+        now,
+        collectionId,
+        songIds[i],
+        i
+      );
+    }
+  });
+  markLocalEdit();
 }
 
 export async function getSongCollectionIds(songId: number): Promise<number[]> {
@@ -420,12 +457,18 @@ export async function getSongCollectionIds(songId: number): Promise<number[]> {
 export async function setSongInCollection(collectionId: number, songId: number, inCollection: boolean): Promise<void> {
   const database = await getDb();
   await database.runAsync(
-    `INSERT INTO collection_songs (collection_id, song_id, updatedAt, deleted) VALUES (?, ?, ?, ?)
-     ON CONFLICT(collection_id, song_id) DO UPDATE SET deleted=excluded.deleted, updatedAt=excluded.updatedAt`,
+    // A song added (or added back) goes to the end of the collection.
+    `INSERT INTO collection_songs (collection_id, song_id, updatedAt, deleted, position)
+     VALUES (?, ?, ?, ?, (SELECT COALESCE(MAX(position), -1) + 1 FROM collection_songs WHERE collection_id=?))
+     ON CONFLICT(collection_id, song_id) DO UPDATE SET
+       deleted=excluded.deleted,
+       updatedAt=excluded.updatedAt,
+       position=CASE WHEN collection_songs.deleted=1 AND excluded.deleted=0 THEN excluded.position ELSE collection_songs.position END`,
     collectionId,
     songId,
     Date.now(),
-    inCollection ? 0 : 1
+    inCollection ? 0 : 1,
+    collectionId
   );
   markLocalEdit();
 }

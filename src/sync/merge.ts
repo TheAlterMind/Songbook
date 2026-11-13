@@ -33,6 +33,8 @@ export interface SyncLink {
   songUid: string;
   updatedAt: number;
   deleted: boolean;
+  /** Place in the collection, counting from 0. Absent in snapshots made before collections were ordered. */
+  position?: number | null;
 }
 
 export interface Snapshot {

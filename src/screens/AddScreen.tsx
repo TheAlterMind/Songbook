@@ -3,11 +3,10 @@ import { View, TouchableOpacity, ScrollView, StyleSheet, KeyboardAvoidingView, P
 import { Text, TextInput } from '../components/Typography';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
-import { TYPE, ICON, LAYOUT } from '../theme/tokens';
+import { TYPE, LAYOUT } from '../theme/tokens';
 import { addSong, getAllSongs, SongLine } from '../db/Database';
 import { confirmThen, errorText, notify } from '../utils/notify';
 import { looksLikeChordSheet, parseChordSheet, reconcileChordRows } from '../utils/chords';
-import { SearchIcon } from '../components/Icons';
 
 export default function AddScreen() {
   const navigation = useNavigation<any>();
@@ -20,7 +19,7 @@ export default function AddScreen() {
   const [album, setAlbum] = useState('');
   const [genre, setGenre] = useState('');
   const [mood, setMood] = useState('');
-  const [language, setLanguage] = useState('English');
+  const [language, setLanguage] = useState('');
   const [year, setYear] = useState('');
   const [key, setKey] = useState('');
   // Chord rows by line index, kept in step with the lyrics as they are edited (as in Edit).
@@ -79,7 +78,8 @@ export default function AddScreen() {
       notify('Could not save the song', errorText(e));
       return;
     }
-    navigation.replace('Detail', { songId: id });
+    // Back from the new song returns to the list, not to the search or Add screens it was reached through.
+    navigation.reset({ index: 1, routes: [{ name: 'Tabs' }, { name: 'Detail', params: { songId: id } }] });
   };
 
   // Warn before saving a song that is already in the library (same title and artist).
@@ -104,11 +104,11 @@ export default function AddScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={onCancel}>
-          <Text style={{ color: colors.accent }}>Cancel</Text>
+          <Text style={{ fontSize: TYPE.title, color: colors.accent }}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '500' }}>Add song</Text>
+        <Text style={{ flex: 1, textAlign: 'center', fontSize: TYPE.title, color: colors.text, fontWeight: '500' }}>Add song</Text>
         <TouchableOpacity onPress={onSave}>
-          <Text style={{ color: colors.accent, fontWeight: '600' }}>Save</Text>
+          <Text style={{ fontSize: TYPE.title, color: colors.accent }}>Save</Text>
         </TouchableOpacity>
       </View>
       <KeyboardAvoidingView
@@ -117,31 +117,11 @@ export default function AddScreen() {
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
         <ScrollView contentContainerStyle={{ padding: 20, gap: 12, paddingBottom: 220 }} keyboardShouldPersistTaps="handled">
-        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>Paste lyrics</Text>
-          <TouchableOpacity
-            onPress={() => navigation.navigate('WebSearch', { query: [artist, title].filter(Boolean).join(' ') })}
-            style={{
-              borderWidth: 1,
-              borderColor: colors.accent,
-              borderRadius: radius.md,
-              paddingVertical: 5,
-              paddingHorizontal: 10,
-              flexDirection: 'row',
-              alignItems: 'center',
-              gap: 6,
-            }}
-          >
-            <SearchIcon color={colors.accent} size={ICON.small} strokeWidth={2} />
-            <Text style={{ color: colors.accent, fontSize: TYPE.small }}>Find lyrics</Text>
-          </TouchableOpacity>
-        </View>
+        <Text style={{ fontSize: TYPE.small, color: colors.neutral500 }}>Lyrics</Text>
         <TextInput
           value={pasteText}
           onChangeText={onPasteChange}
           multiline
-          placeholder="Paste lyrics copied from a search result…"
-          placeholderTextColor={colors.neutral500}
           style={[inputStyle(colors, radius), { minHeight: 150, textAlignVertical: 'top' }]}
         />
         {(() => {
@@ -172,7 +152,6 @@ export default function AddScreen() {
           <TextInput
             value={title}
             onChangeText={setTitle}
-            placeholder="Song title"
             placeholderTextColor={colors.neutral500}
             style={inputStyle(colors, radius)}
           />
@@ -211,7 +190,6 @@ export default function AddScreen() {
           <TextInput
             value={key}
             onChangeText={setKey}
-            placeholder="e.g. G, Am"
             placeholderTextColor={colors.neutral500}
             style={inputStyle(colors, radius)}
           />

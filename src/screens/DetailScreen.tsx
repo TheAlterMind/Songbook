@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { View, TouchableOpacity, ScrollView, Pressable, StyleSheet, BackHandler } from 'react-native';
 import { Text } from '../components/Typography';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
@@ -15,7 +16,8 @@ import { BackChevronIcon, MoreIcon } from '../components/Icons';
 export default function DetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { songId } = route.params;
+  const { songId, queue } = route.params as { songId: number; queue?: number[] };
+  const insets = useSafeAreaInsets();
   const { colors, radius, settings } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const { showUndo } = useToast();
@@ -53,6 +55,16 @@ export default function DetailScreen() {
   if (!song) return null;
 
   const hasChords = song.lines.some((l) => !!l.chord);
+
+  // Opened from a collection: Previous and Next walk through it in order. Replacing the screen keeps Back
+  // returning to the collection instead of piling up one screen per song.
+  const place = queue ? queue.indexOf(songId) : -1;
+  const hasQueue = !!queue && queue.length > 1 && place >= 0;
+  const go = (by: -1 | 1) => {
+    if (!queue) return;
+    const next = queue[place + by];
+    if (next != null) navigation.replace('Detail', { songId: next, queue });
+  };
 
   const onDelete = () => {
     setMenuOpen(false);
@@ -124,6 +136,40 @@ export default function DetailScreen() {
         ))}
       </ScrollView>
 
+      {hasQueue && (
+        <View
+          style={{
+            flexDirection: 'row',
+            alignItems: 'center',
+            gap: 10,
+            paddingHorizontal: 20,
+            paddingTop: 10,
+            paddingBottom: Math.max(insets.bottom, 10),
+            borderTopWidth: 1,
+            borderTopColor: colors.divider,
+            backgroundColor: colors.bg,
+          }}
+        >
+          <TouchableOpacity
+            onPress={() => go(-1)}
+            disabled={place === 0}
+            style={[styles.queueBtn, { borderColor: colors.divider, opacity: place === 0 ? 0.3 : 1 }]}
+          >
+            <Text style={{ color: colors.accent, fontSize: TYPE.body }}>Previous</Text>
+          </TouchableOpacity>
+          <Text style={{ fontSize: TYPE.small, color: colors.neutral500, minWidth: 54, textAlign: 'center' }}>
+            {place + 1} / {queue!.length}
+          </Text>
+          <TouchableOpacity
+            onPress={() => go(1)}
+            disabled={place === queue!.length - 1}
+            style={[styles.queueBtn, { borderColor: colors.divider, opacity: place === queue!.length - 1 ? 0.3 : 1 }]}
+          >
+            <Text style={{ color: colors.accent, fontSize: TYPE.body }}>Next</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {menuOpen && (
         <>
           <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
@@ -165,5 +211,6 @@ const styles = StyleSheet.create({
   },
   menuItem: { height: 44, paddingHorizontal: 16, justifyContent: 'center' },
   toolbar: { paddingHorizontal: 20, marginTop: 4 },
+  queueBtn: { flex: 1, height: 40, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   smallBtn: { width: 48, height: 36, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });
