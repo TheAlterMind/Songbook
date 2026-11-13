@@ -87,26 +87,47 @@ async function signInAndroid(): Promise<string> {
   return tokens.accessToken;
 }
 
+/** Present when the web app runs inside the Songbook desktop window (desktop/preload.js). */
+type DesktopBridge = { signIn(clientId: string, scope: string): Promise<{ accessToken: string; expiresIn: number } | null> };
+
+function desktopBridge(): DesktopBridge | null {
+  return Platform.OS === 'web' && typeof window !== 'undefined' ? ((window as any).songbookDesktop ?? null) : null;
+}
+
 async function signInWeb(): Promise<string> {
   const clientId = WEB_CLIENT_ID as string;
   // The token flow needs no client secret; the token lasts about an hour, then the user signs in again.
-  const request = new (AuthSession().AuthRequest)({
-    clientId,
-    scopes: [DRIVE_SCOPE],
-    redirectUri: AuthSession().makeRedirectUri(),
-    responseType: AuthSession().ResponseType.Token,
-    usePKCE: false,
-  });
-  const result = await request.promptAsync(discovery);
-  if (result.type !== 'success' || !result.params.access_token) throw new NotSignedInError();
-  const expiresAt = Date.now() + Number(result.params.expires_in || 3000) * 1000;
-  cached = { token: result.params.access_token, expiresAt };
+  let token: string;
+  let expiresInSeconds: number;
+
+  const desktop = desktopBridge();
+  if (desktop) {
+    // Google refuses sign-in inside an embedded window, so the desktop shell uses the normal browser.
+    const result = await desktop.signIn(clientId, DRIVE_SCOPE);
+    if (!result) throw new NotSignedInError();
+    token = result.accessToken;
+    expiresInSeconds = result.expiresIn;
+  } else {
+    const request = new (AuthSession().AuthRequest)({
+      clientId,
+      scopes: [DRIVE_SCOPE],
+      redirectUri: AuthSession().makeRedirectUri(),
+      responseType: AuthSession().ResponseType.Token,
+      usePKCE: false,
+    });
+    const result = await request.promptAsync(discovery);
+    if (result.type !== 'success' || !result.params.access_token) throw new NotSignedInError();
+    token = result.params.access_token;
+    expiresInSeconds = Number(result.params.expires_in || 3000);
+  }
+
+  cached = { token, expiresAt: Date.now() + expiresInSeconds * 1000 };
   try {
     webStore()?.setItem(WEB_TOKEN_KEY, JSON.stringify(cached));
   } catch {
     // Storage blocked: the token still works until the page closes.
   }
-  return result.params.access_token;
+  return token;
 }
 
 /** Opens Google's sign-in and returns an access token. */

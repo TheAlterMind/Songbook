@@ -31,6 +31,7 @@
   },
   "devDependencies": {
     "@types/react": "~19.2.2",
+    "electron": "^45.3.1",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -38,6 +39,8 @@
     "android": "expo run:android",
     "ios": "expo run:ios",
     "web": "expo start --web",
+    "desktop": "expo export --platform web && electron desktop/main.js",
+    "desktop:run": "electron desktop/main.js",
     "prebuild:android": "expo prebuild -p android && node scripts/fix-local-properties.js"
   },
   "private": true

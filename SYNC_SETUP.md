@@ -45,13 +45,25 @@ EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=<web client id>
 ## 5. Rebuild
 
 - Android: the sign-in needs new native code (browser, secure storage) and a URL scheme made from your client ID,
-  so regenerate the native project and rebuild the dev client once: `npx expo prebuild --platform android --no-install`,
-  then `npx expo run:android`. Prebuild recreates `android/` and deletes `android/local.properties`, so put
-  `sdk.dir=C\:\\Users\\<you>\\AppData\\Local\\Android\\Sdk` back before building. Without the prebuild the app has no
+  so regenerate the native project and rebuild the dev client once: `npm run prebuild:android` (it also rewrites
+  `android/local.properties`, which prebuild deletes), then `npx expo run:android`. Without the prebuild the app has no
   intent filter for Google's redirect and the sign-in ends on google.com.
 - Web: restart `npx expo start --web`.
 
 Then open Settings > Google Drive > **Sign in and sync**.
+
+## 6. Desktop app (Windows)
+
+The desktop app is an Electron window around the web build. Google refuses sign-in inside embedded windows, so it signs in
+through your normal browser and the browser comes back to a small server inside the app.
+
+1. In the same **Web** client add the JavaScript origin `http://localhost:8765` and the redirect URI
+   `http://localhost:8765/oauth-callback`.
+2. `npm run desktop` builds the web export (with your client ID from `.env.local`) and opens the window.
+   `npm run desktop:run` opens it again without rebuilding.
+3. Settings > Google Drive > **Sign in and sync**. Port 8765 must be free; the window keeps its own library in the
+   browser storage of that address, so keep the port the same.
+4. Like the web version, the sign-in lasts about an hour, then Sync asks again.
 
 ## How it behaves
 
