@@ -109,6 +109,49 @@ export function SettingsTabIcon({ color = '#000', size = 20 }: IconProps) {
   );
 }
 
+/** A wrench outline (after Lucide's, ISC licence), the bottom menu's icon for the Tools tab. */
+export function ToolsTabIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Path
+        d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth / 2}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** A metronome outline (a tapering case with a swinging arm), drawn to match the bottom menu's other icons. */
+export function MetronomeIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path
+        d="M17.5 7 H30.5 L38 41 H10 Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Path d="M24 33 L31 14" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+      <Path d="M15 41 H33" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+/** A tuning fork outline, for the tuner. */
+export function TunerIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path d="M16 6 V21 A8 8 0 0 0 32 21 V6" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round" />
+      <Path d="M24 29 V42" fill="none" stroke={color} strokeWidth={strokeWidth} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
 /** A cloud outline, drawn to match the bottom menu's other icons. */
 export function CloudTabIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
   return (

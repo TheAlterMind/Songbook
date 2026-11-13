@@ -11,6 +11,7 @@ import { ICON, LAYOUT } from './src/theme/tokens';
 import LibraryScreen from './src/screens/LibraryScreen';
 import CollectionsScreen from './src/screens/CollectionsScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import ToolsScreen from './src/screens/ToolsScreen';
 import CollectionDetailScreen from './src/screens/CollectionDetailScreen';
 import DetailScreen from './src/screens/DetailScreen';
 import EditScreen from './src/screens/EditScreen';
@@ -22,7 +23,7 @@ import CoverPickerScreen from './src/screens/CoverPickerScreen';
 import { ToastProvider } from './src/components/Toast';
 import TabBar from './src/components/TabBar';
 import AutoSync from './src/sync/AutoSync';
-import { LibraryTabIcon, CollectionsTabIcon, SettingsTabIcon } from './src/components/Icons';
+import { LibraryTabIcon, CollectionsTabIcon, SettingsTabIcon, ToolsTabIcon } from './src/components/Icons';
 
 const Stack = createNativeStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -47,6 +48,11 @@ function Tabs() {
         name="Collections"
         component={CollectionsScreen}
         options={{ tabBarIcon: ({ color }) => <CollectionsTabIcon color={color} size={ICON.tab} /> }}
+      />
+      <Tab.Screen
+        name="Tools"
+        component={ToolsScreen}
+        options={{ tabBarIcon: ({ color }) => <ToolsTabIcon color={color} size={ICON.tab} /> }}
       />
       <Tab.Screen
         name="Settings"
