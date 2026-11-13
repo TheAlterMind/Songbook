@@ -8,6 +8,7 @@ import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, Song } from '../db/Database';
 import { deleteWithUndo } from '../utils/undoDelete';
+import { markOpened } from '../utils/lastOpened';
 import { useToast } from '../components/Toast';
 import { notify, errorText } from '../utils/notify';
 import { Switch } from '../components/Controls';
@@ -28,6 +29,7 @@ export default function DetailScreen() {
   useFocusEffect(
     useCallback(() => {
       getSong(songId).then((s) => setSong(s));
+      markOpened(songId);
     }, [songId])
   );
 

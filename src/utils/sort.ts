@@ -8,7 +8,12 @@ export const SORT_OPTIONS: { label: string; value: string }[] = [
   { label: 'Key', value: 'key' },
   { label: 'Mood', value: 'mood' },
   { label: 'Favorites', value: 'favorite' },
+  { label: 'Added', value: 'createdAt' },
+  { label: 'Opened', value: 'openedAt' },
 ];
+
+/** Fields that are times: the newest first is the natural order for them. */
+export const DATE_SORTS = ['createdAt', 'openedAt'];
 
 export function sortSongs(songs: Song[], sortBy: string, dir: 'asc' | 'desc'): Song[] {
   const mul = dir === 'desc' ? -1 : 1;
@@ -26,7 +31,7 @@ export function sortSongs(songs: Song[], sortBy: string, dir: 'asc' | 'desc'): S
     if (aBlank && bBlank) return a.title.localeCompare(b.title);
     if (aBlank) return 1;
     if (bBlank) return -1;
-    if (sortBy === 'year') return (Number(av) - Number(bv)) * mul;
+    if (sortBy === 'year' || DATE_SORTS.includes(sortBy)) return (Number(av) - Number(bv)) * mul;
     return String(av).localeCompare(String(bv)) * mul;
   });
 }

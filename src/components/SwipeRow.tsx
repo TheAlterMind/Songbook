@@ -115,7 +115,7 @@ const SwipeRow = forwardRef<
           pointerEvents="none"
           style={[styles.hint, { backgroundColor: swipeRight.background, opacity: hintOpacity }]}
         >
-          <Text numberOfLines={1} style={{ fontSize: TYPE.small, fontWeight: '500', color: swipeRight.color }}>
+          <Text numberOfLines={2} style={{ fontSize: TYPE.small, fontWeight: '500', color: swipeRight.color, textAlign: 'center', paddingHorizontal: 8 }}>
             {swipeRight.label}
           </Text>
         </Animated.View>

@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '../components/Typography';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
 import { TYPE } from '../theme/tokens';
 import { CAN_SCALE, SCALE_CHOICES } from '../theme/scale';
@@ -24,6 +24,7 @@ const THEME_CHOICES = [
 
 export default function SettingsScreen() {
   const { colors, settings, updateSettings, resetSettings } = useTheme();
+  const navigation = useNavigation<any>();
   const [songCount, setSongCount] = useState(0);
   const [sheet, setSheet] = useState<Sheet>(null);
   const [signedIn, setSignedIn] = useState(false);
@@ -145,6 +146,15 @@ export default function SettingsScreen() {
           extra={fontLabel}
           onPress={() => setSheet('font')}
         />
+      </ListSection>
+
+      <ListSection header="Tools">
+        <ListItem
+          title="Metronome"
+          description="Keeps ticking while you read a song."
+          onPress={() => navigation.navigate('Tools', { tool: 'metronome' })}
+        />
+        <ListItem title="Tuner" description="Listens through the microphone." onPress={() => navigation.navigate('Tools', { tool: 'tuner' })} />
       </ListSection>
 
       <ListSection header="Library">

@@ -22,6 +22,8 @@ export interface Song {
   cover?: string | null;
   lines: SongLine[];
   createdAt?: number;
+  /** When it was last opened on this device (ms). Filled in by the Library for sorting; never saved with the song. */
+  openedAt?: number;
   /** Stable id shared across devices (the numeric id is local to one database). */
   uid?: string;
   /** Last edit time (ms). Sync keeps the newest edit of each song. */

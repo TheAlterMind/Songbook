@@ -142,6 +142,41 @@ export function MetronomeIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: 
   );
 }
 
+/** A plain rounded square, for the card size that shows every detail. */
+export function SquareIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path
+        d="M14 7 H34 A7 7 0 0 1 41 14 V34 A7 7 0 0 1 34 41 H14 A7 7 0 0 1 7 34 V14 A7 7 0 0 1 14 7 Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** A die showing five, for the random song button. */
+export function DiceIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path
+        d="M16 7 H32 A9 9 0 0 1 41 16 V32 A9 9 0 0 1 32 41 H16 A9 9 0 0 1 7 32 V16 A9 9 0 0 1 16 7 Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+      <Circle cx="17" cy="17" r="2.8" fill={color} />
+      <Circle cx="31" cy="17" r="2.8" fill={color} />
+      <Circle cx="24" cy="24" r="2.8" fill={color} />
+      <Circle cx="17" cy="31" r="2.8" fill={color} />
+      <Circle cx="31" cy="31" r="2.8" fill={color} />
+    </Svg>
+  );
+}
+
 /** A tuning fork outline, for the tuner. */
 export function TunerIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
   return (

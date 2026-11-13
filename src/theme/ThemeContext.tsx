@@ -22,7 +22,8 @@ export type Settings = {
   defaultChordsOn: boolean;
   sortBy: string;
   sortDir: 'asc' | 'desc';
-  viewMode: 'expanded' | 'compact';
+  /** How much each song card shows: just the name, the name and artist, or everything. */
+  viewMode: 'name' | 'artist' | 'details';
   /** Interface size multiplier (web): 0.85, 1, 1.25 or 1.5, as in Sitness. */
   uiScale: number;
 };
@@ -37,7 +38,7 @@ const DEFAULT_SETTINGS: Settings = {
   defaultChordsOn: false,
   sortBy: 'title',
   sortDir: 'asc',
-  viewMode: 'expanded',
+  viewMode: 'details',
   uiScale: 1,
 };
 
@@ -69,7 +70,13 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
             const saved = JSON.parse(raw);
             // Before the Theme choice there was a Light version switch: keep what it was set to.
             const theme: Theme = ['system', 'light', 'dark'].includes(saved.theme) ? saved.theme : saved.lightMode ? 'light' : 'dark';
-            setStored({ ...DEFAULT_SETTINGS, ...saved, theme });
+            // The card size used to have two states: 'expanded' showed the tags, 'compact' only the name.
+            const viewMode = ['name', 'artist', 'details'].includes(saved.viewMode)
+              ? saved.viewMode
+              : saved.viewMode === 'compact'
+                ? 'name'
+                : DEFAULT_SETTINGS.viewMode;
+            setStored({ ...DEFAULT_SETTINGS, ...saved, theme, viewMode });
           } catch {
             // corrupt settings blob — fall back to defaults rather than crash
           }

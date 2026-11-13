@@ -4,20 +4,38 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs';
 import { useTheme } from '../theme/ThemeContext';
 import { ICON, LAYOUT } from '../theme/tokens';
-import { PlusIcon } from './Icons';
+import { PlusIcon, DiceIcon } from './Icons';
+import { getAllSongs } from '../db/Database';
+import { notify, errorText } from '../utils/notify';
 
 const ADD_SIZE = 68; // button plus ring, rising LAYOUT.tabProtrude above the bar and ending 4px above its bottom edge
 const ADD_RING = 4; // drawn inside ADD_SIZE, so the visible button is 60
 
 /**
- * The bottom menu: List, Collections, a + button that rises a little above the bar, Tools, Settings.
- * Those four are screens; + opens Find lyrics. Google Drive syncs by itself (see sync/AutoSync) and signing in
+ * The bottom menu: List, Collections, a + button that rises a little above the bar, a dice, Settings.
+ * List, Collections and Settings are screens; + opens Find lyrics and the dice opens a random song. The Tools
+ * screen is a tab that has no button: Settings opens it. Google Drive syncs by itself (see sync/AutoSync) and signing in
  * lives in Settings.
  */
 export default function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const nav = navigation as any;
+
+  // The dice: opens a song picked at random from the whole library.
+  const pickRandomSong = async () => {
+    try {
+      const songs = await getAllSongs();
+      if (songs.length === 0) {
+        notify('No songs yet', 'Add a song first, then the dice can pick one for you.');
+        return;
+      }
+      const song = songs[Math.floor(Math.random() * songs.length)];
+      nav.navigate('Detail', { songId: song.id });
+    } catch (e) {
+      notify("Couldn't pick a song", errorText(e));
+    }
+  };
 
   const screenTab = (name: string) => {
     const route = state.routes.find((r) => r.name === name);
@@ -50,7 +68,9 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
         {screenTab('Library')}
         {screenTab('Collections')}
         <View style={styles.slot} />
-        {screenTab('Tools')}
+        <TouchableOpacity style={styles.slot} onPress={pickRandomSong} accessibilityRole="button" accessibilityLabel="Random song">
+          <DiceIcon color={colors.neutral500} size={ICON.tab} />
+        </TouchableOpacity>
         {screenTab('Settings')}
       </View>
       <TouchableOpacity

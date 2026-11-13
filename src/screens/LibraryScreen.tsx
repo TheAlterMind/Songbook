@@ -9,10 +9,11 @@ import { deleteWithUndo } from '../utils/undoDelete';
 import { onLibraryChanged } from '../utils/libraryEvents';
 import { useToast } from '../components/Toast';
 import SwipeRow, { SwipeRowHandle, closeOpenRow, isAnyRowOpen } from '../components/SwipeRow';
-import { sortSongs, SORT_OPTIONS } from '../utils/sort';
+import { sortSongs, SORT_OPTIONS, DATE_SORTS } from '../utils/sort';
+import { getOpenedMap } from '../utils/lastOpened';
 import { backfillCovers } from '../services/covers';
 import Cover from '../components/Cover';
-import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, SearchIcon } from '../components/Icons';
+import { ExpandedViewIcon, CompactViewIcon, SquareIcon, SortUpIcon, SortDownIcon, StarIcon, SearchIcon } from '../components/Icons';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
@@ -22,6 +23,7 @@ export default function LibraryScreen() {
   // True when the touch that is happening closed a swipe, so the row under it should not open its song.
   const tapClosedSwipe = useRef(false);
   const [songs, setSongs] = useState<Song[]>([]);
+  const [opened, setOpened] = useState<Record<string, number>>({});
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
   const [query, setQuery] = useState('');
@@ -33,6 +35,7 @@ export default function LibraryScreen() {
 
   const load = useCallback(async () => {
     try {
+      setOpened(await getOpenedMap());
       setSongs(await getAllSongs());
       setLoadError('');
     } catch (e: any) {
@@ -82,24 +85,26 @@ export default function LibraryScreen() {
   }, [query, songs]);
 
   const sorted = useMemo(
-    () => sortSongs(matches ?? songs, settings.sortBy, settings.sortDir),
-    [songs, matches, settings.sortBy, settings.sortDir]
+    () => sortSongs((matches ?? songs).map((s) => ({ ...s, openedAt: opened[String(s.id)] })), settings.sortBy, settings.sortDir),
+    [songs, matches, opened, settings.sortBy, settings.sortDir]
   );
 
   const toggleSortDir = () => updateSettings({ sortDir: settings.sortDir === 'asc' ? 'desc' : 'asc' });
-  const toggleViewMode = () => updateSettings({ viewMode: settings.viewMode === 'expanded' ? 'compact' : 'expanded' });
+  // The card size button cycles: name only, then name and artist, then every detail.
+  const toggleViewMode = () =>
+    updateSettings({ viewMode: settings.viewMode === 'name' ? 'artist' : settings.viewMode === 'artist' ? 'details' : 'name' });
 
   const toggleFav = async (song: Song) => {
     await setFavorite(song.id as number, !song.favorite);
     load();
   };
 
-  // Swipe right: Favorite at once, no button. Swipe left: shows Delete.
+  // Swipe right: opens the list of collections to add the song to. Swipe left: shows Delete.
   const swipeRightFor = (song: Song) => ({
-    label: song.favorite ? 'Unfavorite' : 'Favorite',
+    label: 'Add to collection',
     background: colors.accent,
     color: colors.accent100,
-    onTrigger: () => toggleFav(song),
+    onTrigger: () => navigation.navigate('AddToCollection', { songId: song.id }),
   });
   const rightActionsFor = (song: Song) => [
     {
@@ -111,7 +116,8 @@ export default function LibraryScreen() {
   ];
 
   const sortLabel = (SORT_OPTIONS.find((o) => o.value === settings.sortBy) || SORT_OPTIONS[0]).label;
-  const isExpanded = settings.viewMode === 'expanded';
+  const showArtist = settings.viewMode !== 'name';
+  const showDetails = settings.viewMode === 'details';
 
   return (
     <View
@@ -173,7 +179,13 @@ export default function LibraryScreen() {
                 {settings.sortDir === 'asc' ? <SortDownIcon color={colors.accent} size={20} /> : <SortUpIcon color={colors.accent} size={20} />}
               </TouchableOpacity>
               <TouchableOpacity onPress={toggleViewMode} style={styles.iconBtn}>
-                {isExpanded ? <ExpandedViewIcon color={colors.accent} size={ICON.button} /> : <CompactViewIcon color={colors.accent} size={ICON.button} />}
+                {settings.viewMode === 'name' ? (
+                  <CompactViewIcon color={colors.accent} size={ICON.button} />
+                ) : settings.viewMode === 'artist' ? (
+                  <ExpandedViewIcon color={colors.accent} size={ICON.button} />
+                ) : (
+                  <SquareIcon color={colors.accent} size={ICON.button} />
+                )}
               </TouchableOpacity>
             </View>
           </>
@@ -231,28 +243,36 @@ export default function LibraryScreen() {
               navigation.navigate('Detail', { songId: item.id });
             }}
             onLongPress={() => rowRefs.current[item.id as number]?.open()}
-            style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: isExpanded ? 12 : 11 }]}
+            style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: showArtist ? 12 : 11 }]}
           >
-            <Cover uri={item.cover} size={isExpanded ? 64 : 36} title={item.title} />
+            <Cover uri={item.cover} size={showArtist ? 64 : 36} title={item.title} />
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={{ fontSize: TYPE.body, fontWeight: '500', color: colors.text }} numberOfLines={1}>
                 {item.title}
               </Text>
-              {isExpanded && (
+              {showArtist && (
+                <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
+                  {item.artist}
+                </Text>
+              )}
+              {showDetails && (
                 <>
-                  <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
-                    {item.artist}
-                  </Text>
+                  {!!item.album && (
+                    <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
+                      {item.album}
+                    </Text>
+                  )}
                   <View style={{ flexDirection: 'row', gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
                     {!!item.key && <Tag label={item.key} accent colors={colors} radius={radius} />}
                     {!!item.genre && <Tag label={item.genre} colors={colors} radius={radius} />}
                     {!!item.mood && <Tag label={item.mood} colors={colors} radius={radius} />}
+                    {!!item.language && <Tag label={item.language} colors={colors} radius={radius} />}
                     {!!item.year && <Tag label={item.year} colors={colors} radius={radius} />}
                   </View>
                 </>
               )}
             </View>
-            {isExpanded ? (
+            {showArtist ? (
               <TouchableOpacity onPress={() => toggleFav(item)} style={{ padding: 6 }}>
                 <StarIcon color={item.favorite ? colors.accent : colors.neutral500} filled={!!item.favorite} size={ICON.inline} />
               </TouchableOpacity>
@@ -290,7 +310,8 @@ export default function LibraryScreen() {
                     if (on) {
                       toggleSortDir();
                     } else {
-                      updateSettings({ sortBy: o.value });
+                      // Times start with the newest; the other fields start from A, or the lowest.
+                      updateSettings({ sortBy: o.value, sortDir: DATE_SORTS.includes(o.value) ? 'desc' : 'asc' });
                       setSortMenuOpen(false);
                     }
                   }}
