@@ -4,8 +4,8 @@ import { Text, TextInput } from '../components/Typography';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
-import { addSong, SongLine } from '../db/Database';
-import { errorText, notify } from '../utils/notify';
+import { addSong, getAllSongs, SongLine } from '../db/Database';
+import { confirmThen, errorText, notify } from '../utils/notify';
 import { looksLikeChordSheet, parseChordSheet, reconcileChordRows } from '../utils/chords';
 import { SearchIcon } from '../components/Icons';
 
@@ -59,7 +59,7 @@ export default function AddScreen() {
 
   const onCancel = () => navigation.goBack();
 
-  const onSave = async () => {
+  const save = async () => {
     const rawLines = pasteText.trim() ? pasteText.split('\n') : ['(no lyrics pasted yet)'];
     let id: number;
     try {
@@ -80,6 +80,24 @@ export default function AddScreen() {
       return;
     }
     navigation.replace('Detail', { songId: id });
+  };
+
+  // Warn before saving a song that is already in the library (same title and artist).
+  const onSave = async () => {
+    const shownTitle = title.trim() || 'Untitled';
+    const shownArtist = artist.trim() || 'Unknown Artist';
+    try {
+      const exists = (await getAllSongs()).some(
+        (s) => s.title.trim().toLowerCase() === shownTitle.toLowerCase() && s.artist.trim().toLowerCase() === shownArtist.toLowerCase()
+      );
+      if (exists) {
+        confirmThen('Already in your library', `"${shownTitle}" by ${shownArtist} is already saved. Add it again?`, 'Add anyway', save);
+        return;
+      }
+    } catch {
+      // if the check fails, just save
+    }
+    save();
   };
 
   return (

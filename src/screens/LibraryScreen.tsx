@@ -1,18 +1,24 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { View, FlatList, TouchableOpacity, Pressable, StyleSheet, Alert } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { View, FlatList, TouchableOpacity, Pressable, StyleSheet, BackHandler } from 'react-native';
 import { Text, TextInput } from '../components/Typography';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
-import { getAllSongs, searchSongs, setFavorite, deleteSong, duplicateSong, Song } from '../db/Database';
+import { getAllSongs, searchSongs, setFavorite, duplicateSong, Song } from '../db/Database';
+import { deleteWithUndo } from '../utils/undoDelete';
+import { onLibraryChanged } from '../utils/libraryEvents';
+import { useToast } from '../components/Toast';
+import SwipeRow, { SwipeRowHandle } from '../components/SwipeRow';
 import { sortSongs, SORT_OPTIONS } from '../utils/sort';
 import { backfillCovers } from '../services/covers';
 import Cover from '../components/Cover';
-import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, PlusIcon, SearchIcon, CollectionsTabIcon, SettingsTabIcon } from '../components/Icons';
+import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, PlusIcon, SearchIcon } from '../components/Icons';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
   const { colors, radius, settings, updateSettings } = useTheme();
+  const { showUndo } = useToast();
+  const rowRefs = useRef<Record<number, SwipeRowHandle | null>>({});
   const [songs, setSongs] = useState<Song[]>([]);
   const [sortMenuOpen, setSortMenuOpen] = useState(false);
   const [loadError, setLoadError] = useState('');
@@ -37,6 +43,19 @@ export default function LibraryScreen() {
       load();
     }, [load])
   );
+
+  // Reload when something changed elsewhere, such as Undo on a deleted song.
+  useEffect(() => onLibraryChanged(load), [load]);
+
+  // The Back key closes the sort menu instead of leaving the app.
+  useEffect(() => {
+    if (!sortMenuOpen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setSortMenuOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [sortMenuOpen]);
 
   // Songs without a cover get one looked up in the background; each cover appears as it is found.
   useEffect(() => {
@@ -73,26 +92,29 @@ export default function LibraryScreen() {
     load();
   };
 
-  const onLongPressSong = (song: Song) => {
-    Alert.alert(song.title, undefined, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Duplicate',
-        onPress: async () => {
-          await duplicateSong(song.id as number);
-          load();
-        },
+  const actionsFor = (song: Song) => [
+    {
+      label: song.favorite ? 'Unfavorite' : 'Favorite',
+      background: colors.accent,
+      color: colors.accent100,
+      onPress: () => toggleFav(song),
+    },
+    {
+      label: 'Duplicate',
+      background: colors.well,
+      color: colors.text,
+      onPress: async () => {
+        await duplicateSong(song.id as number);
+        load();
       },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteSong(song.id as number);
-          load();
-        },
-      },
-    ]);
-  };
+    },
+    {
+      label: 'Delete',
+      background: '#ff4d4f',
+      color: '#fff',
+      onPress: () => deleteWithUndo(song, showUndo).catch(() => {}),
+    },
+  ];
 
   const sortLabel = (SORT_OPTIONS.find((o) => o.value === settings.sortBy) || SORT_OPTIONS[0]).label;
   const isExpanded = settings.viewMode === 'expanded';
@@ -143,21 +165,13 @@ export default function LibraryScreen() {
                 onPress={() => setSortMenuOpen((o) => !o)}
                 onLayout={(ev) => setLabelBox({ x: ev.nativeEvent.layout.x, w: ev.nativeEvent.layout.width })}
                 hitSlop={{ top: 10, bottom: 10, left: 2, right: 2 }}
-                style={{ paddingVertical: 10, paddingHorizontal: 4 }}
+                style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, height: LAYOUT.iconButton, paddingHorizontal: 8 }}
               >
-                <Text numberOfLines={1} style={{ fontSize: TYPE.label, fontWeight: '600', color: colors.accent }}>{sortLabel}</Text>
-              </TouchableOpacity>
-              <TouchableOpacity onPress={toggleSortDir} style={styles.iconBtn}>
-                {settings.sortDir === 'asc' ? <SortUpIcon color={colors.accent} size={ICON.button} /> : <SortDownIcon color={colors.accent} size={ICON.button} />}
+                <Text numberOfLines={1} style={{ fontSize: TYPE.title, fontWeight: '400', color: colors.accent }}>{sortLabel}</Text>
+                {settings.sortDir === 'asc' ? <SortDownIcon color={colors.accent} size={20} /> : <SortUpIcon color={colors.accent} size={20} />}
               </TouchableOpacity>
               <TouchableOpacity onPress={toggleViewMode} style={styles.iconBtn}>
                 {isExpanded ? <ExpandedViewIcon color={colors.accent} size={ICON.button} /> : <CompactViewIcon color={colors.accent} size={ICON.button} />}
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Collections')} style={styles.iconBtn}>
-                <CollectionsTabIcon color={colors.accent} size={ICON.button} />
-              </TouchableOpacity>
-              <TouchableOpacity onPress={() => navigation.navigate('Settings')} style={styles.iconBtn}>
-                <SettingsTabIcon color={colors.accent} size={ICON.button} />
               </TouchableOpacity>
             </View>
           </>
@@ -181,15 +195,38 @@ export default function LibraryScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 40 }}>
-              {query.trim() ? `Nothing found for "${query.trim()}".` : 'No songs yet. Tap + to add one.'}
-            </Text>
+            query.trim() ? (
+              <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 40 }}>
+                Nothing found for "{query.trim()}".
+              </Text>
+            ) : (
+              <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 20, gap: 14, marginTop: 24 }}>
+                <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>Your songbook is empty</Text>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('WebSearch', { query: '' })}
+                  style={{ backgroundColor: colors.accent, borderRadius: radius.md, height: LAYOUT.iconButton, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: TYPE.body, color: colors.accent100 }}>Find lyrics</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => navigation.navigate('Add')}
+                  style={{ backgroundColor: colors.well, borderRadius: radius.md, height: LAYOUT.iconButton, alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <Text style={{ fontSize: TYPE.body, color: colors.text }}>Paste lyrics</Text>
+                </TouchableOpacity>
+              </View>
+            )
           )
         }
         renderItem={({ item }) => (
+          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} actions={actionsFor(item)} radius={radius.md}>
           <TouchableOpacity
-            onPress={() => navigation.navigate('Detail', { songId: item.id })}
-            onLongPress={() => onLongPressSong(item)}
+            onPress={() => {
+              const row = rowRefs.current[item.id as number];
+              if (row?.isOpen()) row.close();
+              else navigation.navigate('Detail', { songId: item.id });
+            }}
+            onLongPress={() => rowRefs.current[item.id as number]?.open()}
             style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: isExpanded ? 12 : 11 }]}
           >
             <Cover uri={item.cover} size={isExpanded ? 64 : 36} title={item.title} />
@@ -219,6 +256,7 @@ export default function LibraryScreen() {
               !!item.key && <Tag label={item.key} colors={colors} radius={radius} />
             )}
           </TouchableOpacity>
+          </SwipeRow>
         )}
       />
 
@@ -251,12 +289,18 @@ export default function LibraryScreen() {
                 <TouchableOpacity
                   key={o.value}
                   onPress={() => {
-                    updateSettings({ sortBy: o.value });
-                    setSortMenuOpen(false);
+                    // Tapping the current field flips the direction; another field switches to it.
+                    if (on) {
+                      toggleSortDir();
+                    } else {
+                      updateSettings({ sortBy: o.value });
+                      setSortMenuOpen(false);
+                    }
                   }}
-                  style={styles.dropdownItem}
+                  style={[styles.dropdownItem, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 16 }]}
                 >
                   <Text style={{ fontSize: TYPE.body, fontWeight: on ? '600' : '400', color: on ? colors.accent : colors.text }}>{o.label}</Text>
+                  {on && (settings.sortDir === 'asc' ? <SortDownIcon color={colors.accent} size={ICON.small} /> : <SortUpIcon color={colors.accent} size={ICON.small} />)}
                 </TouchableOpacity>
               );
             })}
@@ -295,8 +339,8 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   h1: { fontSize: TYPE.title, fontWeight: '500' },
-  tools: { flexDirection: 'row', alignItems: 'center', flexShrink: 0 },
-  iconBtn: { width: 40, height: LAYOUT.iconButton, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  tools: { flexDirection: 'row', alignItems: 'center', flexShrink: 0, marginRight: -8 },
+  iconBtn: { width: 56, height: LAYOUT.iconButton, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
   search: { flex: 1, minWidth: 0, flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, marginRight: 4, borderWidth: 1 },
   dropdown: {
     position: 'absolute',

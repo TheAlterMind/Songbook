@@ -113,11 +113,11 @@ export default function EditScreen() {
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()}>
-          <Text style={{ color: colors.accent }}>Cancel</Text>
+          <Text style={{ fontSize: TYPE.title, color: colors.accent }}>Cancel</Text>
         </TouchableOpacity>
-        <Text style={{ flex: 1, textAlign: 'center', color: colors.text, fontWeight: '500' }}>Edit song</Text>
+        <Text style={{ flex: 1, textAlign: 'center', fontSize: TYPE.title, color: colors.text, fontWeight: '500' }}>Edit song</Text>
         <TouchableOpacity onPress={onSave}>
-          <Text style={{ color: colors.accent, fontWeight: '600' }}>Save</Text>
+          <Text style={{ fontSize: TYPE.title, color: colors.accent }}>Save</Text>
         </TouchableOpacity>
       </View>
       <KeyboardAvoidingView

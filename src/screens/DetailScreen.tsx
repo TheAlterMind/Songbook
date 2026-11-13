@@ -1,19 +1,24 @@
-import React, { useCallback, useState } from 'react';
-import { View, TouchableOpacity, ScrollView, StyleSheet } from 'react-native';
+import React, { useCallback, useEffect, useState } from 'react';
+import { View, TouchableOpacity, ScrollView, Pressable, StyleSheet, BackHandler } from 'react-native';
 import { Text } from '../components/Typography';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { activateKeepAwakeAsync, deactivateKeepAwake } from 'expo-keep-awake';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON, LAYOUT } from '../theme/tokens';
-import { getSong, setFavorite, Song } from '../db/Database';
+import { getSong, Song } from '../db/Database';
+import { deleteWithUndo } from '../utils/undoDelete';
+import { useToast } from '../components/Toast';
+import { notify, errorText } from '../utils/notify';
 import { Switch } from '../components/Controls';
-import { BackChevronIcon, CollectionsTabIcon, StarIcon, EditPencilIcon } from '../components/Icons';
+import { BackChevronIcon, MoreIcon } from '../components/Icons';
 
 export default function DetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { songId } = route.params;
-  const { colors, settings } = useTheme();
+  const { colors, radius, settings } = useTheme();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const { showUndo } = useToast();
   const [song, setSong] = useState<Song | null>(null);
   const [fontSize, setFontSize] = useState(settings.defaultFontSize);
   const [chordsOn, setChordsOn] = useState(settings.defaultChordsOn);
@@ -35,14 +40,33 @@ export default function DetailScreen() {
     }, [settings.keepAwake])
   );
 
+  // The Back key closes the menu instead of leaving the song.
+  useEffect(() => {
+    if (!menuOpen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setMenuOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [menuOpen]);
+
   if (!song) return null;
 
   const hasChords = song.lines.some((l) => !!l.chord);
 
-  const toggleFav = async () => {
-    await setFavorite(songId, !song.favorite);
-    setSong({ ...song, favorite: !song.favorite });
+  const onDelete = () => {
+    setMenuOpen(false);
+    deleteWithUndo(song, showUndo)
+      .then(() => navigation.goBack())
+      .catch((e) => notify('Could not delete', errorText(e)));
   };
+
+  const items = [
+    { label: 'Edit', run: () => navigation.navigate('Edit', { songId }) },
+    { label: 'Add to collection', run: () => navigation.navigate('AddToCollection', { songId }) },
+    { label: 'Change cover', run: () => navigation.navigate('CoverPicker', { songId }) },
+    { label: 'Delete', danger: true, run: onDelete },
+  ];
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
@@ -59,20 +83,8 @@ export default function DetailScreen() {
             {song.title}
           </Text>
         </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('AddToCollection', { songId })}
-          style={styles.iconBtn}
-        >
-          <CollectionsTabIcon color={colors.accent} size={ICON.button} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={toggleFav} style={styles.iconBtn}>
-          <StarIcon color={song.favorite ? colors.accent : colors.neutral500} filled={!!song.favorite} size={ICON.button} />
-        </TouchableOpacity>
-        <TouchableOpacity
-          onPress={() => navigation.navigate('Edit', { songId })}
-          style={styles.iconBtn}
-        >
-          <EditPencilIcon color={colors.accent} size={ICON.button} />
+        <TouchableOpacity onPress={() => setMenuOpen((o) => !o)} style={styles.iconBtn}>
+          <MoreIcon color={colors.accent} size={ICON.button} />
         </TouchableOpacity>
       </View>
 
@@ -111,6 +123,26 @@ export default function DetailScreen() {
           </View>
         ))}
       </ScrollView>
+
+      {menuOpen && (
+        <>
+          <Pressable style={StyleSheet.absoluteFill} onPress={() => setMenuOpen(false)} />
+          <View style={[styles.menu, { backgroundColor: colors.surface, borderColor: colors.divider, borderRadius: radius.md }]}>
+            {items.map((it) => (
+              <TouchableOpacity
+                key={it.label}
+                onPress={() => {
+                  setMenuOpen(false);
+                  it.run();
+                }}
+                style={styles.menuItem}
+              >
+                <Text style={{ fontSize: TYPE.body, color: it.danger ? '#ff4d4f' : colors.text }}>{it.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </>
+      )}
     </View>
   );
 }
@@ -119,6 +151,19 @@ const styles = StyleSheet.create({
   // Sitness .page-head: icon buttons sit edge to edge, their own padding gives the side margin.
   header: { paddingTop: LAYOUT.top, paddingHorizontal: 6, paddingBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 0 },
   iconBtn: { width: LAYOUT.iconButton, height: LAYOUT.iconButton, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  menu: {
+    position: 'absolute',
+    top: LAYOUT.top + LAYOUT.iconButton - 2,
+    right: 10,
+    borderWidth: 1,
+    paddingVertical: 6,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+  },
+  menuItem: { height: 44, paddingHorizontal: 16, justifyContent: 'center' },
   toolbar: { paddingHorizontal: 20, marginTop: 4 },
   smallBtn: { width: 48, height: 36, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

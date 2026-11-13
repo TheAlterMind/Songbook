@@ -210,7 +210,8 @@ export async function updateSong(song: Song): Promise<void> {
   );
 }
 
-export async function setSongCover(id: number, cover: string): Promise<void> {
+/** Sets the cover: a URL, '' for none, or null to have it looked up again. */
+export async function setSongCover(id: number, cover: string | null): Promise<void> {
   const database = await getDb();
   await database.runAsync('UPDATE songs SET cover=? WHERE id=?', cover, id);
 }
@@ -224,6 +225,31 @@ export async function deleteSong(id: number): Promise<void> {
   const database = await getDb();
   await database.runAsync('DELETE FROM songs WHERE id=?', id);
   await database.runAsync('DELETE FROM collection_songs WHERE song_id=?', id);
+}
+
+/** Puts a deleted song back under its old id, with its collections (used by Undo). */
+export async function restoreSong(song: Song, collectionIds: number[]): Promise<void> {
+  const database = await getDb();
+  await database.runAsync(
+    `INSERT OR REPLACE INTO songs (id, title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, cover)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    song.id as number,
+    song.title,
+    song.artist,
+    song.album ?? '',
+    song.genre ?? '',
+    song.mood ?? '',
+    song.language ?? '',
+    song.year ?? '',
+    song.key ?? '',
+    song.favorite ? 1 : 0,
+    JSON.stringify(song.lines || []),
+    song.createdAt ?? Date.now(),
+    song.cover ?? null
+  );
+  for (const cid of collectionIds) {
+    await database.runAsync('INSERT OR IGNORE INTO collection_songs (collection_id, song_id) VALUES (?, ?)', cid, song.id as number);
+  }
 }
 
 export async function getAllSongs(): Promise<Song[]> {
