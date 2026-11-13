@@ -1,6 +1,6 @@
 import React from 'react';
 import { View } from 'react-native';
-import { SafeAreaProvider, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { StatusBar } from 'expo-status-bar';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -20,6 +20,7 @@ import BrowserScreen from './src/screens/BrowserScreen';
 import AddToCollectionScreen from './src/screens/AddToCollectionScreen';
 import CoverPickerScreen from './src/screens/CoverPickerScreen';
 import { ToastProvider } from './src/components/Toast';
+import TabBar from './src/components/TabBar';
 import { LibraryTabIcon, CollectionsTabIcon, SettingsTabIcon } from './src/components/Icons';
 
 const Stack = createNativeStackNavigator();
@@ -27,16 +28,12 @@ const Tab = createBottomTabNavigator();
 
 function Tabs() {
   const { colors } = useTheme();
-  const insets = useSafeAreaInsets();
   return (
     <Tab.Navigator
+      // The bar is our own: it adds the + button and the cloud between the screens' tabs.
+      tabBar={(props) => <TabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: colors.accent,
-        tabBarInactiveTintColor: colors.neutral500,
-        tabBarShowLabel: false,
-        tabBarStyle: { backgroundColor: colors.menuBg, borderTopWidth: 0, elevation: 0, shadowOpacity: 0, height: 44 + insets.bottom, paddingBottom: 0 },
-        tabBarItemStyle: { paddingTop: 3, paddingBottom: 0, justifyContent: 'center' },
         sceneStyle: { backgroundColor: colors.bg },
       }}
     >

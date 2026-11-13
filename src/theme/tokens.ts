@@ -100,6 +100,8 @@ export const LAYOUT = {
   headerHeight: 56, // Sitness .head / .page-head
   iconButton: 44, // Sitness .icon-btn
   round: 56, // Sitness .round (circular buttons)
+  tabBar: 44, // bottom menu height, above the gesture area
+  tabProtrude: 28, // how far the + button rises above the bottom menu (0: it sits inside the bar)
   maxWidth: 720, // Sitness .page.scrolling column
   wideAt: 700, // framed column from this width (in 16px units)
 };

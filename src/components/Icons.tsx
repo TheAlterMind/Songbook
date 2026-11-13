@@ -109,6 +109,21 @@ export function SettingsTabIcon({ color = '#000', size = 20 }: IconProps) {
   );
 }
 
+/** A cloud outline, drawn to match the bottom menu's other icons. */
+export function CloudTabIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path
+        d="M13 37.5 H35 A8 8 0 0 0 35 21.5 A11 11 0 0 0 13 21.5 A8 8 0 0 0 13 37.5 Z"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 export function RightOutline({ color = '#000', size = 20 }: IconProps) {
   return (
     <Svg width={size} height={size} viewBox="0 0 48 48">

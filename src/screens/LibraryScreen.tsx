@@ -12,7 +12,7 @@ import SwipeRow, { SwipeRowHandle } from '../components/SwipeRow';
 import { sortSongs, SORT_OPTIONS } from '../utils/sort';
 import { backfillCovers } from '../services/covers';
 import Cover from '../components/Cover';
-import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, PlusIcon, SearchIcon } from '../components/Icons';
+import { ExpandedViewIcon, CompactViewIcon, SortUpIcon, SortDownIcon, StarIcon, SearchIcon } from '../components/Icons';
 
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
@@ -181,7 +181,7 @@ export default function LibraryScreen() {
       <FlatList
         data={sorted}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: 100, gap: 8 }}
+        contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: 18, gap: 8 }}
         ListEmptyComponent={
           loadError ? (
             <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, gap: 10, marginTop: 24 }}>
@@ -259,13 +259,6 @@ export default function LibraryScreen() {
           </SwipeRow>
         )}
       />
-
-      <TouchableOpacity
-        onPress={() => navigation.navigate('Add')}
-        style={[styles.fab, { borderColor: colors.accent, backgroundColor: colors.accent }]}
-      >
-        <PlusIcon color={colors.accent100} size={ICON.button} />
-      </TouchableOpacity>
 
       {sortMenuOpen && !searchOpen && (
         <>
@@ -356,15 +349,4 @@ const styles = StyleSheet.create({
   dropdownItem: { height: 44, paddingHorizontal: 16, justifyContent: 'center' },
   searchInput: { flex: 1, minWidth: 0, paddingVertical: 9 },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  fab: {
-    position: 'absolute',
-    right: 18,
-    bottom: 18,
-    width: LAYOUT.round,
-    height: LAYOUT.round,
-    borderRadius: LAYOUT.round / 2,
-    borderWidth: 1.5,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
 });

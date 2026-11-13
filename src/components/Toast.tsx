@@ -5,17 +5,20 @@ import { Text } from './Typography';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, LAYOUT } from '../theme/tokens';
 
-type ToastState = { id: number; message: string; onUndo: () => void };
-type ToastApi = { showUndo: (message: string, onUndo: () => void) => void };
+type ToastState = { id: number; message: string; onUndo?: () => void };
+type ToastApi = {
+  showUndo: (message: string, onUndo: () => void) => void;
+  /** A short note with no button, such as "Synced". */
+  showMessage: (message: string) => void;
+};
 
-const ToastContext = createContext<ToastApi>({ showUndo: () => {} });
+const ToastContext = createContext<ToastApi>({ showUndo: () => {}, showMessage: () => {} });
 export const useToast = () => useContext(ToastContext);
 
-const VISIBLE_MS = 6000;
-// Library's + button sits 18px above the tab bar; keep the bar clear of it.
-const FAB_CLEARANCE = 18 + LAYOUT.round;
+const UNDO_VISIBLE_MS = 6000;
+const MESSAGE_VISIBLE_MS = 3000;
 
-/** A snackbar with an Undo button, shown above the bottom menu. Shows one message at a time. */
+/** A snackbar shown above the bottom menu, with an Undo button when there is something to undo. One message at a time. */
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const { colors, radius } = useTheme();
   const insets = useSafeAreaInsets();
@@ -27,31 +30,39 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToast({ id: counter.current, message, onUndo });
   }, []);
 
+  const showMessage = useCallback((message: string) => {
+    counter.current += 1;
+    setToast({ id: counter.current, message });
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
-    const timer = setTimeout(() => setToast(null), VISIBLE_MS);
+    const timer = setTimeout(() => setToast(null), toast.onUndo ? UNDO_VISIBLE_MS : MESSAGE_VISIBLE_MS);
     return () => clearTimeout(timer);
   }, [toast]);
 
   return (
-    <ToastContext.Provider value={{ showUndo }}>
+    <ToastContext.Provider value={{ showUndo, showMessage }}>
       {children}
       {toast && (
-        <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + 44 + 12 + FAB_CLEARANCE }]}>
+        // Clear of the bottom menu and the + button that rises above it.
+        <View pointerEvents="box-none" style={[styles.wrap, { bottom: insets.bottom + LAYOUT.tabBar + LAYOUT.tabProtrude + 12 }]}>
           <View style={[styles.bar, { backgroundColor: colors.surface, borderColor: colors.divider, borderRadius: radius.md }]}>
             <Text numberOfLines={1} style={{ flex: 1, fontSize: TYPE.label, color: colors.text }}>
               {toast.message}
             </Text>
-            <TouchableOpacity
-              onPress={() => {
-                const undo = toast.onUndo;
-                setToast(null);
-                undo();
-              }}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Text style={{ fontSize: TYPE.label, fontWeight: '500', color: colors.accent }}>Undo</Text>
-            </TouchableOpacity>
+            {toast.onUndo && (
+              <TouchableOpacity
+                onPress={() => {
+                  const undo = toast.onUndo;
+                  setToast(null);
+                  undo?.();
+                }}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Text style={{ fontSize: TYPE.label, fontWeight: '500', color: colors.accent }}>Undo</Text>
+              </TouchableOpacity>
+            )}
           </View>
         </View>
       )}
