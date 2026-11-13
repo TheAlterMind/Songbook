@@ -21,12 +21,27 @@ export interface Song {
   cover?: string | null;
   lines: SongLine[];
   createdAt?: number;
+  /** Stable id shared across devices (the numeric id is local to one database). */
+  uid?: string;
+  /** Last edit time (ms). Sync keeps the newest edit of each song. */
+  updatedAt?: number;
+  /** Set when deleted; the row is kept so the deletion can sync. */
+  deletedAt?: number | null;
 }
 
 export interface Collection {
   id?: number;
   name: string;
   createdAt?: number;
+  uid?: string;
+  updatedAt?: number;
+  deletedAt?: number | null;
+}
+
+/** A random id that is unique enough to tell records apart across devices. */
+export function newUid(): string {
+  const hex = () => Math.floor(Math.random() * 0x100000000).toString(16).padStart(8, '0');
+  return `${Date.now().toString(16)}-${hex()}-${hex()}`;
 }
 
 let db: SQLite.SQLiteDatabase | null = null;
@@ -126,7 +141,10 @@ async function initSchema(db: SQLite.SQLiteDatabase) {
         favorite INTEGER NOT NULL DEFAULT 0,
         linesJson TEXT NOT NULL,
         createdAt INTEGER NOT NULL,
-        cover TEXT
+        cover TEXT,
+        uid TEXT,
+        updatedAt INTEGER,
+        deletedAt INTEGER
       );
       CREATE INDEX IF NOT EXISTS idx_songs_title ON songs(title);
       CREATE INDEX IF NOT EXISTS idx_songs_artist ON songs(artist);
@@ -134,18 +152,50 @@ async function initSchema(db: SQLite.SQLiteDatabase) {
       CREATE TABLE IF NOT EXISTS collections (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
-        createdAt INTEGER NOT NULL
+        createdAt INTEGER NOT NULL,
+        uid TEXT,
+        updatedAt INTEGER,
+        deletedAt INTEGER
       );
 
       CREATE TABLE IF NOT EXISTS collection_songs (
         collection_id INTEGER NOT NULL,
         song_id INTEGER NOT NULL,
+        updatedAt INTEGER NOT NULL DEFAULT 0,
+        deleted INTEGER NOT NULL DEFAULT 0,
         PRIMARY KEY (collection_id, song_id)
       );
     `);
+    const columnsOf = async (table: string) =>
+      (await db.getAllAsync<{ name: string }>(`PRAGMA table_info(${table})`)).map((c) => c.name);
+
     // Libraries made before covers existed get the column added.
-    const cols = await db.getAllAsync<{ name: string }>('PRAGMA table_info(songs)');
-    if (!cols.some((c) => c.name === 'cover')) await db.execAsync('ALTER TABLE songs ADD COLUMN cover TEXT');
+    const songCols = await columnsOf('songs');
+    if (!songCols.includes('cover')) await db.execAsync('ALTER TABLE songs ADD COLUMN cover TEXT');
+
+    // Libraries made before sync get stable ids, edit times and delete markers.
+    const collectionCols = await columnsOf('collections');
+    const linkCols = await columnsOf('collection_songs');
+    if (!songCols.includes('uid') || !collectionCols.includes('uid') || !linkCols.includes('deleted')) {
+      // Keep a copy of the old data inside the database in case the migration goes wrong.
+      await db.execAsync(`
+        CREATE TABLE IF NOT EXISTS premigration_songs AS SELECT * FROM songs;
+        CREATE TABLE IF NOT EXISTS premigration_collections AS SELECT * FROM collections;
+        CREATE TABLE IF NOT EXISTS premigration_collection_songs AS SELECT * FROM collection_songs;
+      `);
+      for (const col of ['uid TEXT', 'updatedAt INTEGER', 'deletedAt INTEGER']) {
+        if (!songCols.includes(col.split(' ')[0])) await db.execAsync(`ALTER TABLE songs ADD COLUMN ${col}`);
+        if (!collectionCols.includes(col.split(' ')[0])) await db.execAsync(`ALTER TABLE collections ADD COLUMN ${col}`);
+      }
+      if (!linkCols.includes('updatedAt')) await db.execAsync('ALTER TABLE collection_songs ADD COLUMN updatedAt INTEGER NOT NULL DEFAULT 0');
+      if (!linkCols.includes('deleted')) await db.execAsync('ALTER TABLE collection_songs ADD COLUMN deleted INTEGER NOT NULL DEFAULT 0');
+    }
+    for (const table of ['songs', 'collections']) {
+      const missing = await db.getAllAsync<{ id: number }>(`SELECT id FROM ${table} WHERE uid IS NULL`);
+      for (const row of missing) await db.runAsync(`UPDATE ${table} SET uid=? WHERE id=?`, newUid(), row.id);
+      await db.execAsync(`UPDATE ${table} SET updatedAt=createdAt WHERE updatedAt IS NULL`);
+      await db.execAsync(`CREATE UNIQUE INDEX IF NOT EXISTS idx_${table}_uid ON ${table}(uid)`);
+    }
   }
 }
 
@@ -164,14 +214,18 @@ function rowToSong(row: any): Song {
     cover: row.cover ?? null,
     lines: JSON.parse(row.linesJson || '[]'),
     createdAt: row.createdAt,
+    uid: row.uid,
+    updatedAt: row.updatedAt,
+    deletedAt: row.deletedAt ?? null,
   };
 }
 
 export async function addSong(song: Song): Promise<number> {
   const database = await getDb();
+  const now = Date.now();
   const result = await database.runAsync(
-    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, cover)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT INTO songs (title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, cover, uid, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -182,8 +236,10 @@ export async function addSong(song: Song): Promise<number> {
     song.key ?? '',
     song.favorite ? 1 : 0,
     JSON.stringify(song.lines || []),
-    Date.now(),
-    song.cover ?? null
+    now,
+    song.cover ?? null,
+    newUid(),
+    now
   );
   return result.lastInsertRowId as number;
 }
@@ -195,7 +251,7 @@ export async function updateSong(song: Song): Promise<void> {
   const changed = !!before && (before.title !== song.title || before.artist !== song.artist || (before.album ?? '') !== (song.album ?? ''));
   if (changed) await database.runAsync('UPDATE songs SET cover=NULL WHERE id=?', song.id as number);
   await database.runAsync(
-    `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=? WHERE id=?`,
+    `UPDATE songs SET title=?, artist=?, album=?, genre=?, mood=?, language=?, year=?, key=?, favorite=?, linesJson=?, updatedAt=? WHERE id=?`,
     song.title,
     song.artist,
     song.album ?? '',
@@ -206,6 +262,7 @@ export async function updateSong(song: Song): Promise<void> {
     song.key ?? '',
     song.favorite ? 1 : 0,
     JSON.stringify(song.lines || []),
+    Date.now(),
     song.id as number
   );
 }
@@ -213,26 +270,34 @@ export async function updateSong(song: Song): Promise<void> {
 /** Sets the cover: a URL, '' for none, or null to have it looked up again. */
 export async function setSongCover(id: number, cover: string | null): Promise<void> {
   const database = await getDb();
-  await database.runAsync('UPDATE songs SET cover=? WHERE id=?', cover, id);
+  await database.runAsync('UPDATE songs SET cover=?, updatedAt=? WHERE id=?', cover, Date.now(), id);
 }
 
 export async function setFavorite(id: number, favorite: boolean): Promise<void> {
   const database = await getDb();
-  await database.runAsync('UPDATE songs SET favorite=? WHERE id=?', favorite ? 1 : 0, id);
+  await database.runAsync('UPDATE songs SET favorite=?, updatedAt=? WHERE id=?', favorite ? 1 : 0, Date.now(), id);
 }
 
+/** Marks the song deleted. The row stays so the deletion can sync; its collection links stay too, hidden. */
 export async function deleteSong(id: number): Promise<void> {
   const database = await getDb();
-  await database.runAsync('DELETE FROM songs WHERE id=?', id);
-  await database.runAsync('DELETE FROM collection_songs WHERE song_id=?', id);
+  const now = Date.now();
+  await database.runAsync('UPDATE songs SET deletedAt=?, updatedAt=? WHERE id=?', now, now, id);
 }
 
-/** Puts a deleted song back under its old id, with its collections (used by Undo). */
+/** Brings a deleted song back (used by Undo). Its collections come back with it. */
 export async function restoreSong(song: Song, collectionIds: number[]): Promise<void> {
   const database = await getDb();
+  const now = Date.now();
+  const done = await database.runAsync('UPDATE songs SET deletedAt=NULL, updatedAt=? WHERE id=?', now, song.id as number);
+  if (done.changes > 0) {
+    for (const cid of collectionIds) await setSongInCollection(cid, song.id as number, true);
+    return;
+  }
+  // The row is gone (should not happen): put it back under its old id.
   await database.runAsync(
-    `INSERT OR REPLACE INTO songs (id, title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, cover)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    `INSERT OR REPLACE INTO songs (id, title, artist, album, genre, mood, language, year, key, favorite, linesJson, createdAt, cover, uid, updatedAt)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     song.id as number,
     song.title,
     song.artist,
@@ -244,23 +309,23 @@ export async function restoreSong(song: Song, collectionIds: number[]): Promise<
     song.key ?? '',
     song.favorite ? 1 : 0,
     JSON.stringify(song.lines || []),
-    song.createdAt ?? Date.now(),
-    song.cover ?? null
+    song.createdAt ?? now,
+    song.cover ?? null,
+    song.uid ?? newUid(),
+    now
   );
-  for (const cid of collectionIds) {
-    await database.runAsync('INSERT OR IGNORE INTO collection_songs (collection_id, song_id) VALUES (?, ?)', cid, song.id as number);
-  }
+  for (const cid of collectionIds) await setSongInCollection(cid, song.id as number, true);
 }
 
 export async function getAllSongs(): Promise<Song[]> {
   const database = await getDb();
-  const rows = await database.getAllAsync<any>('SELECT * FROM songs');
+  const rows = await database.getAllAsync<any>('SELECT * FROM songs WHERE deletedAt IS NULL');
   return rows.map(rowToSong);
 }
 
 export async function getSong(id: number): Promise<Song | null> {
   const database = await getDb();
-  const row = await database.getFirstAsync<any>('SELECT * FROM songs WHERE id=?', id);
+  const row = await database.getFirstAsync<any>('SELECT * FROM songs WHERE id=? AND deletedAt IS NULL', id);
   return row ? rowToSong(row) : null;
 }
 
@@ -286,7 +351,7 @@ export async function searchSongs(query: string): Promise<Song[]> {
   const database = await getDb();
   const like = `%${query}%`;
   const rows = await database.getAllAsync<any>(
-    'SELECT * FROM songs WHERE title LIKE ? OR artist LIKE ? OR album LIKE ? OR linesJson LIKE ?',
+    'SELECT * FROM songs WHERE deletedAt IS NULL AND (title LIKE ? OR artist LIKE ? OR album LIKE ? OR linesJson LIKE ?)',
     like,
     like,
     like,
@@ -299,25 +364,34 @@ export async function searchSongs(query: string): Promise<Song[]> {
 
 export async function addCollection(name: string): Promise<number> {
   const database = await getDb();
-  const result = await database.runAsync('INSERT INTO collections (name, createdAt) VALUES (?, ?)', name, Date.now());
+  const now = Date.now();
+  const result = await database.runAsync(
+    'INSERT INTO collections (name, createdAt, uid, updatedAt) VALUES (?, ?, ?, ?)',
+    name,
+    now,
+    newUid(),
+    now
+  );
   return result.lastInsertRowId as number;
 }
 
+/** Marks the collection deleted. Its links stay, hidden, so the deletion can sync. */
 export async function deleteCollection(id: number): Promise<void> {
   const database = await getDb();
-  await database.runAsync('DELETE FROM collections WHERE id=?', id);
-  await database.runAsync('DELETE FROM collection_songs WHERE collection_id=?', id);
+  const now = Date.now();
+  await database.runAsync('UPDATE collections SET deletedAt=?, updatedAt=? WHERE id=?', now, now, id);
 }
 
 export async function getAllCollections(): Promise<Collection[]> {
   const database = await getDb();
-  return database.getAllAsync<Collection>('SELECT * FROM collections ORDER BY createdAt DESC');
+  return database.getAllAsync<Collection>('SELECT * FROM collections WHERE deletedAt IS NULL ORDER BY createdAt DESC');
 }
 
 export async function getCollectionSongIds(collectionId: number): Promise<number[]> {
   const database = await getDb();
   const rows = await database.getAllAsync<{ song_id: number }>(
-    'SELECT song_id FROM collection_songs WHERE collection_id=?',
+    `SELECT l.song_id FROM collection_songs l JOIN songs s ON s.id = l.song_id
+     WHERE l.collection_id=? AND l.deleted=0 AND s.deletedAt IS NULL`,
     collectionId
   );
   return rows.map((r) => r.song_id);
@@ -326,7 +400,8 @@ export async function getCollectionSongIds(collectionId: number): Promise<number
 export async function getSongCollectionIds(songId: number): Promise<number[]> {
   const database = await getDb();
   const rows = await database.getAllAsync<{ collection_id: number }>(
-    'SELECT collection_id FROM collection_songs WHERE song_id=?',
+    `SELECT l.collection_id FROM collection_songs l JOIN collections c ON c.id = l.collection_id
+     WHERE l.song_id=? AND l.deleted=0 AND c.deletedAt IS NULL`,
     songId
   );
   return rows.map((r) => r.collection_id);
@@ -334,22 +409,21 @@ export async function getSongCollectionIds(songId: number): Promise<number[]> {
 
 export async function setSongInCollection(collectionId: number, songId: number, inCollection: boolean): Promise<void> {
   const database = await getDb();
-  if (inCollection) {
-    await database.runAsync(
-      'INSERT OR IGNORE INTO collection_songs (collection_id, song_id) VALUES (?, ?)',
-      collectionId,
-      songId
-    );
-  } else {
-    await database.runAsync('DELETE FROM collection_songs WHERE collection_id=? AND song_id=?', collectionId, songId);
-  }
+  await database.runAsync(
+    `INSERT INTO collection_songs (collection_id, song_id, updatedAt, deleted) VALUES (?, ?, ?, ?)
+     ON CONFLICT(collection_id, song_id) DO UPDATE SET deleted=excluded.deleted, updatedAt=excluded.updatedAt`,
+    collectionId,
+    songId,
+    Date.now(),
+    inCollection ? 0 : 1
+  );
 }
 
 export async function getSongsByIds(ids: number[]): Promise<Song[]> {
   if (ids.length === 0) return [];
   const database = await getDb();
   const placeholders = ids.map(() => '?').join(',');
-  const rows = await database.getAllAsync<any>(`SELECT * FROM songs WHERE id IN (${placeholders})`, ...ids);
+  const rows = await database.getAllAsync<any>(`SELECT * FROM songs WHERE deletedAt IS NULL AND id IN (${placeholders})`, ...ids);
   return rows.map(rowToSong);
 }
 
@@ -360,7 +434,7 @@ export async function getAllDataForExport() {
   const collections = await getAllCollections();
   const database = await getDb();
   const links = await database.getAllAsync<{ collection_id: number; song_id: number }>(
-    'SELECT collection_id, song_id FROM collection_songs'
+    'SELECT collection_id, song_id FROM collection_songs WHERE deleted=0'
   );
   return { songs, collections, links, exportedAt: Date.now(), version: 1 };
 }

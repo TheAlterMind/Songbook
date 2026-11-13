@@ -22,7 +22,9 @@
     },
     "plugins": [
       "expo-sqlite",
-      "expo-sharing"
+      "expo-sharing",
+      "expo-web-browser",
+      "expo-secure-store"
     ]
   }
 }

@@ -11,6 +11,8 @@ import { exportLibrary, importLibrary } from '../utils/exportImport';
 import ScreenHeader from '../components/ScreenHeader';
 import { FONT_CHOICES } from '../theme/fonts';
 import { confirmThen } from '../utils/notify';
+import { isSignedIn, isSyncConfigured, NotSignedInError, signOut } from '../sync/googleAuth';
+import { getLastSyncedAt, syncNow } from '../sync/syncService';
 
 type Sheet = null | 'accent' | 'theme' | 'font' | 'scale';
 
@@ -24,12 +26,45 @@ export default function SettingsScreen() {
   const { colors, settings, updateSettings, resetSettings } = useTheme();
   const [songCount, setSongCount] = useState(0);
   const [sheet, setSheet] = useState<Sheet>(null);
+  const [signedIn, setSignedIn] = useState(false);
+  const [lastSynced, setLastSynced] = useState<number | null>(null);
+  const [syncing, setSyncing] = useState(false);
+  const syncConfigured = isSyncConfigured();
 
   useFocusEffect(
     useCallback(() => {
       getAllSongs().then((s) => setSongCount(s.length));
+      isSignedIn().then(setSignedIn);
+      getLastSyncedAt().then(setLastSynced);
     }, [])
   );
+
+  const onSync = async () => {
+    setSyncing(true);
+    try {
+      const count = await syncNow(true);
+      setSongCount(count);
+      setSignedIn(true);
+      setLastSynced(await getLastSyncedAt());
+    } catch (e: any) {
+      // Closing the Google sign-in screen is not an error worth a dialog.
+      if (!(e instanceof NotSignedInError)) Alert.alert('Sync failed', e?.message || 'Something went wrong.');
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  const onSignOut = () =>
+    confirmThen('Sign out of Google?', 'Your songs stay on this device and in your Drive backup. Syncing stops until you sign in again.', 'Sign out', async () => {
+      await signOut();
+      setSignedIn(false);
+    });
+
+  const syncDescription = !syncConfigured
+    ? 'Not set up in this build. Add your Google client ID to .env.local and rebuild: see SYNC_SETUP.md.'
+    : lastSynced
+      ? `Last synced ${new Date(lastSynced).toLocaleString()}.`
+      : 'Keeps a copy of your songs in a hidden Drive folder and syncs it between your devices.';
 
   const onExport = async () => {
     try {
@@ -117,6 +152,16 @@ export default function SettingsScreen() {
           title={`${songCount} ${songCount === 1 ? 'song saved' : 'songs saved'}`}
           description="Paste lyrics from anywhere, then tidy them up in the editor."
         />
+      </ListSection>
+
+      <ListSection header="Google Drive">
+        <ListItem title={signedIn ? 'Signed in to Google' : 'Sync with Google Drive'} description={syncDescription} />
+        {syncConfigured && (
+          <View style={{ padding: 12, gap: 8 }}>
+            <TonalButton label={syncing ? 'Syncing…' : signedIn ? 'Sync now' : 'Sign in and sync'} onPress={syncing ? () => {} : onSync} />
+            {signedIn && <TonalButton label="Sign out" onPress={onSignOut} />}
+          </View>
+        )}
       </ListSection>
 
       <ListSection header="Data">
