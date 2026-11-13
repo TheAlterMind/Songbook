@@ -6,7 +6,13 @@
 //
 // Google refuses sign-in inside embedded windows, so signing in opens the normal browser. Google sends the browser
 // back to /oauth-callback on this server, whose page hands the token to the app. No client secret is involved.
-const { app, BrowserWindow, dialog, ipcMain, shell } = require('electron');
+//
+// Staying signed in: with a Google "Desktop app" client (SONGBOOK_DESKTOP_CLIENT_ID / _SECRET in .env.local, see
+// SYNC_SETUP.md) sign-in uses the authorization-code flow with PKCE and keeps a refresh token, encrypted with the
+// operating system's storage, so the window gets new access tokens without asking again. Google does not treat a
+// Desktop client's secret as confidential, but it still stays out of git. Without those two values the old
+// one-hour sign-in is used.
+const { app, BrowserWindow, dialog, ipcMain, safeStorage, shell } = require('electron');
 const crypto = require('crypto');
 const fs = require('fs');
 const http = require('http');
@@ -53,27 +59,184 @@ function finishSignIn(result) {
   resolve(result);
 }
 
+const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const REVOKE_URL = 'https://oauth2.googleapis.com/revoke';
+
+/** The Desktop client's id and secret, from the environment or .env.local. Only these two keys are read. */
+function desktopClient() {
+  const found = {
+    id: process.env.SONGBOOK_DESKTOP_CLIENT_ID,
+    secret: process.env.SONGBOOK_DESKTOP_CLIENT_SECRET,
+  };
+  if (!found.id || !found.secret) {
+    try {
+      const text = fs.readFileSync(path.join(__dirname, '..', '.env.local'), 'utf8');
+      for (const line of text.split(/\r?\n/)) {
+        const m = /^\s*(?:export\s+)?(SONGBOOK_DESKTOP_CLIENT_ID|SONGBOOK_DESKTOP_CLIENT_SECRET)\s*=\s*(.*?)\s*$/.exec(line);
+        if (!m) continue;
+        const value = m[2].replace(/^(['"])(.*)\1$/, '$2');
+        if (m[1] === 'SONGBOOK_DESKTOP_CLIENT_ID' && !found.id) found.id = value;
+        if (m[1] === 'SONGBOOK_DESKTOP_CLIENT_SECRET' && !found.secret) found.secret = value;
+      }
+    } catch {
+      // No .env.local: the one-hour sign-in is used.
+    }
+  }
+  return found.id && found.secret ? { id: found.id, secret: found.secret } : null;
+}
+
+// The refresh token lives in one encrypted file in the app's data folder, never in the web page's storage.
+const refreshFile = () => path.join(app.getPath('userData'), 'google-refresh.bin');
+
+function loadRefreshToken() {
+  try {
+    if (!safeStorage.isEncryptionAvailable()) return null;
+    return safeStorage.decryptString(fs.readFileSync(refreshFile()));
+  } catch {
+    return null;
+  }
+}
+
+function saveRefreshToken(token) {
+  try {
+    if (safeStorage.isEncryptionAvailable()) fs.writeFileSync(refreshFile(), safeStorage.encryptString(token));
+  } catch {
+    // Not saved: the next sign-in asks again.
+  }
+}
+
+function forgetRefreshToken() {
+  try {
+    fs.unlinkSync(refreshFile());
+  } catch {
+    // Already gone.
+  }
+}
+
+async function tokenRequest(params) {
+  const res = await fetch(TOKEN_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams(params).toString(),
+  });
+  const body = await res.json().catch(() => ({}));
+  return { ok: res.ok, body };
+}
+
+ipcMain.handle('songbook:has-refresh', () => !!desktopClient() && !!loadRefreshToken());
+
+/** A new access token from the saved refresh token, or null when there is none or Google no longer accepts it. */
+ipcMain.handle('songbook:refresh', async () => {
+  const client = desktopClient();
+  const refreshToken = loadRefreshToken();
+  if (!client || !refreshToken) return null;
+  try {
+    const { ok, body } = await tokenRequest({
+      client_id: client.id,
+      client_secret: client.secret,
+      grant_type: 'refresh_token',
+      refresh_token: refreshToken,
+    });
+    if (ok && body.access_token) return { accessToken: body.access_token, expiresIn: Number(body.expires_in) || 3000 };
+    // Revoked or expired: forget it. A network failure (the catch below) keeps it for next time.
+    if (body.error === 'invalid_grant') forgetRefreshToken();
+  } catch {
+    // Offline: try again later.
+  }
+  return null;
+});
+
+ipcMain.handle('songbook:sign-out', async () => {
+  const refreshToken = loadRefreshToken();
+  forgetRefreshToken();
+  if (refreshToken) {
+    try {
+      await fetch(REVOKE_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({ token: refreshToken }).toString(),
+      });
+    } catch {
+      // Best effort; the local copy is already gone.
+    }
+  }
+});
+
 ipcMain.handle('songbook:sign-in', (_event, clientId, scope) => {
   if (typeof clientId !== 'string' || !/^[\w.-]+$/.test(clientId)) throw new Error('Bad Google client id.');
   if (typeof scope !== 'string' || !/^https:\/\/www\.googleapis\.com\/auth\/[\w.]+$/.test(scope)) throw new Error('Bad scope.');
 
   finishSignIn(null); // A newer sign-in replaces an older one that was never finished.
   const state = crypto.randomBytes(24).toString('hex');
+  const client = desktopClient();
   const url = new URL('https://accounts.google.com/o/oauth2/v2/auth');
-  url.search = new URLSearchParams({
-    client_id: clientId,
-    redirect_uri: REDIRECT_URI,
-    response_type: 'token',
-    scope,
-    state,
-    include_granted_scopes: 'true',
-  }).toString();
+  let verifier = null;
+  if (client) {
+    // Authorization code with PKCE; offline access so Google issues a refresh token.
+    verifier = crypto.randomBytes(48).toString('base64url');
+    url.search = new URLSearchParams({
+      client_id: client.id,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'code',
+      scope,
+      state,
+      access_type: 'offline',
+      prompt: 'consent',
+      code_challenge: crypto.createHash('sha256').update(verifier).digest('base64url'),
+      code_challenge_method: 'S256',
+    }).toString();
+  } else {
+    url.search = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: REDIRECT_URI,
+      response_type: 'token',
+      scope,
+      state,
+      include_granted_scopes: 'true',
+    }).toString();
+  }
 
   return new Promise((resolve) => {
-    pending = { state, resolve, timer: setTimeout(() => finishSignIn(null), SIGN_IN_TIMEOUT_MS) };
+    pending = { state, verifier, resolve, timer: setTimeout(() => finishSignIn(null), SIGN_IN_TIMEOUT_MS) };
     shell.openExternal(url.toString()).catch(() => finishSignIn(null));
   });
 });
+
+/** Finishes a code-flow sign-in: trades Google's one-time code for tokens and keeps the refresh token. */
+async function completeCodeSignIn(code) {
+  const client = desktopClient();
+  const verifier = pending && pending.verifier;
+  if (!client || !verifier) return false;
+  try {
+    const { ok, body } = await tokenRequest({
+      client_id: client.id,
+      client_secret: client.secret,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      code_verifier: verifier,
+    });
+    if (!ok || !body.access_token) {
+      finishSignIn(null);
+      return false;
+    }
+    if (body.refresh_token) saveRefreshToken(body.refresh_token);
+    finishSignIn({ accessToken: body.access_token, expiresIn: Number(body.expires_in) || 3000 });
+    if (mainWindow) {
+      if (mainWindow.isMinimized()) mainWindow.restore();
+      mainWindow.focus();
+    }
+    return true;
+  } catch {
+    finishSignIn(null);
+    return false;
+  }
+}
+
+const DONE_PAGE = (message) => `<!doctype html><html><head><meta charset="utf-8"><title>Songbook</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{font:16px system-ui,sans-serif;background:#0d0c18;color:#eee;display:grid;place-items:center;height:100vh;margin:0;text-align:center}</style>
+</head><body><p>${message}</p></body></html>`;
 
 // The page Google redirects the browser to. The token arrives in the URL fragment, which only scripts can read,
 // so the page posts it back to this server.
@@ -128,6 +291,15 @@ async function handle(req, res) {
   const pathname = decodeURIComponent(new URL(req.url, ORIGIN).pathname);
 
   if (pathname === '/oauth-callback' && req.method === 'GET') {
+    const query = new URL(req.url, ORIGIN).searchParams;
+    // Code flow: Google puts the result in the query string, so this request finishes the sign-in itself.
+    if (pending && pending.verifier && (query.has('code') || query.has('error'))) {
+      const html = { 'Content-Type': MIME['.html'] };
+      if (query.get('state') !== pending.state) return send(res, 400, html, DONE_PAGE('Unknown sign-in. Return to Songbook and try again.'));
+      const ok = query.has('code') && (await completeCodeSignIn(query.get('code')));
+      if (!ok) finishSignIn(null);
+      return send(res, 200, html, DONE_PAGE(ok ? 'Signed in. You can close this tab and return to Songbook.' : 'Sign-in did not finish. Return to Songbook and try again.'));
+    }
     return send(res, 200, { 'Content-Type': MIME['.html'] }, CALLBACK_PAGE);
   }
 

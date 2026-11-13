@@ -1,5 +1,6 @@
 import React, { useCallback, useState } from 'react';
-import { View, FlatList, TouchableOpacity, StyleSheet, Alert } from 'react-native';
+import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
+import { confirmThen } from '../utils/notify';
 import { Text, TextInput } from '../components/Typography';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
@@ -36,17 +37,10 @@ export default function CollectionsScreen() {
   };
 
   const onLongPress = (c: Collection) => {
-    Alert.alert('Delete this collection?', c.name, [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          await deleteCollection(c.id as number);
-          load();
-        },
-      },
-    ]);
+    confirmThen('Delete this collection?', c.name, 'Delete', async () => {
+      await deleteCollection(c.id as number);
+      load();
+    });
   };
 
   return (

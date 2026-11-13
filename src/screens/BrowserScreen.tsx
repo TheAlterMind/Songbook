@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { View, TouchableOpacity, StyleSheet, Alert, ActivityIndicator } from 'react-native';
+import { notify } from '../utils/notify';
 import { Text } from '../components/Typography';
 import { WebView, WebViewMessageEvent } from 'react-native-webview';
 import * as Clipboard from 'expo-clipboard';
@@ -61,12 +62,17 @@ export default function BrowserScreen() {
     const copied = (await Clipboard.getStringAsync())?.trim();
     const reason = msg.ok ? 'Nothing to import on this page.' : msg.reason;
     if (copied) {
-      Alert.alert('Nothing found on the page', `${reason}\n\nUse the text you copied instead?`, [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Use copied text', onPress: () => toAdd('', '', '', copied, false, 'clipboard') },
-      ]);
+      Alert.alert(
+        'Nothing found on the page',
+        `${reason}\n\nUse the text you copied instead?`,
+        [
+          { text: 'Cancel', style: 'cancel' },
+          { text: 'Use copied text', onPress: () => toAdd('', '', '', copied, false, 'clipboard') },
+        ],
+        { cancelable: true }
+      );
     } else {
-      Alert.alert('Nothing to import', reason);
+      notify('Nothing to import', reason);
     }
   };
 

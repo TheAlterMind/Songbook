@@ -72,3 +72,17 @@ through your normal browser and the browser comes back to a small server inside 
 - The merge compares the clocks of your devices, so keep their date and time set automatically.
 - Two devices syncing at the very same moment can overwrite each other once; the next sync repairs it.
 - On the web the sign-in lasts about an hour, then Sync asks you to sign in again. Android keeps you signed in.
+
+## Optional: stay signed in on the desktop app
+
+Without this, the desktop window asks you to sign in again about every hour. With it, it signs in once and keeps going.
+
+1. Google Cloud console, same project, **APIs & Services > Credentials > Create credentials > OAuth client ID**, type **Desktop app**. No redirect URI is needed.
+2. Add two lines to `.env.local` (never commit it, never paste it into chat):
+   ```
+   SONGBOOK_DESKTOP_CLIENT_ID=...
+   SONGBOOK_DESKTOP_CLIENT_SECRET=...
+   ```
+3. Restart the desktop app (`npm run desktop:run`) and sign in once from the cloud button.
+
+The refresh token is stored encrypted by the operating system in the app's data folder. Signing out in Settings removes and revokes it. Android and the plain web build are unchanged.

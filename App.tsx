@@ -21,6 +21,7 @@ import AddToCollectionScreen from './src/screens/AddToCollectionScreen';
 import CoverPickerScreen from './src/screens/CoverPickerScreen';
 import { ToastProvider } from './src/components/Toast';
 import TabBar from './src/components/TabBar';
+import AutoSync from './src/sync/AutoSync';
 import { LibraryTabIcon, CollectionsTabIcon, SettingsTabIcon } from './src/components/Icons';
 
 const Stack = createNativeStackNavigator();
@@ -68,6 +69,7 @@ function RootNavigator() {
       <StatusBar style={settings.lightMode ? 'dark' : 'light'} />
       <View style={[{ flex: 1, width: '100%', alignSelf: 'center', backgroundColor: colors.bg, overflow: 'hidden' }, column]}>
         <ToastProvider>
+        <AutoSync />
         <NavigationContainer>
           <Stack.Navigator screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
             <Stack.Screen name="Tabs" component={Tabs} />

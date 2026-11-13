@@ -3,7 +3,7 @@ import { Alert, Platform } from 'react-native';
 /** A simple message with an OK button. React Native Web's Alert does nothing, so web uses the browser's. */
 export function notify(title: string, message?: string) {
   if (Platform.OS === 'web') window.alert(message ? `${title}\n\n${message}` : title);
-  else Alert.alert(title, message);
+  else Alert.alert(title, message, [{ text: 'OK' }], { cancelable: true });
 }
 
 /** The message to show for a failed save or load. */
@@ -17,8 +17,14 @@ export function confirmThen(title: string, message: string, confirmText: string,
     if (window.confirm(`${title}\n\n${message}`)) run();
     return;
   }
-  Alert.alert(title, message, [
-    { text: 'Cancel', style: 'cancel' },
-    { text: confirmText, style: 'destructive', onPress: run },
-  ]);
+  // cancelable: the Android Back button and a tap outside close the dialog without doing anything.
+  Alert.alert(
+    title,
+    message,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: confirmText, style: 'destructive', onPress: run },
+    ],
+    { cancelable: true }
+  );
 }

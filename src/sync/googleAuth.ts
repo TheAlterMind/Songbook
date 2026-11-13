@@ -68,7 +68,12 @@ export async function isSignedIn(): Promise<boolean> {
     }
   }
   const web = readWebToken();
-  return !!web && web.expiresAt - MARGIN_MS > Date.now();
+  if (web && web.expiresAt - MARGIN_MS > Date.now()) return true;
+  try {
+    return !!(await desktopBridge()?.hasRefresh?.());
+  } catch {
+    return false;
+  }
 }
 
 async function signInAndroid(): Promise<string> {
@@ -88,7 +93,14 @@ async function signInAndroid(): Promise<string> {
 }
 
 /** Present when the web app runs inside the Songbook desktop window (desktop/preload.js). */
-type DesktopBridge = { signIn(clientId: string, scope: string): Promise<{ accessToken: string; expiresIn: number } | null> };
+type DesktopToken = { accessToken: string; expiresIn: number };
+type DesktopBridge = {
+  signIn(clientId: string, scope: string): Promise<DesktopToken | null>;
+  // Present once the desktop shell can keep a refresh token; older shells only have signIn.
+  hasRefresh?(): Promise<boolean>;
+  refresh?(): Promise<DesktopToken | null>;
+  signOut?(): Promise<void>;
+};
 
 function desktopBridge(): DesktopBridge | null {
   return Platform.OS === 'web' && typeof window !== 'undefined' ? ((window as any).songbookDesktop ?? null) : null;
@@ -96,7 +108,8 @@ function desktopBridge(): DesktopBridge | null {
 
 async function signInWeb(): Promise<string> {
   const clientId = WEB_CLIENT_ID as string;
-  // The token flow needs no client secret; the token lasts about an hour, then the user signs in again.
+  // In a plain browser the token flow needs no client secret; the token lasts about an hour, then the user signs in
+  // again. The desktop window can do better when a Desktop client is configured (desktop/main.js).
   let token: string;
   let expiresInSeconds: number;
 
@@ -161,6 +174,16 @@ export async function getAccessToken(interactive: boolean): Promise<string> {
       cached = web;
       return web.token;
     }
+    // The desktop window can trade its saved refresh token for a new access token without asking.
+    try {
+      const fresh = await desktopBridge()?.refresh?.();
+      if (fresh) {
+        cached = { token: fresh.accessToken, expiresAt: Date.now() + fresh.expiresIn * 1000 };
+        return fresh.accessToken;
+      }
+    } catch {
+      // Fall through to a normal sign-in.
+    }
   }
 
   if (!interactive) throw new NotSignedInError();
@@ -187,6 +210,11 @@ export async function signOut(): Promise<void> {
     // Nothing to clear.
   }
   if (Platform.OS === 'android') await SecureStore().deleteItemAsync(REFRESH_KEY);
+  try {
+    await desktopBridge()?.signOut?.();
+  } catch {
+    // The desktop copy is best effort too.
+  }
   if (token) {
     try {
       await AuthSession().revokeAsync({ token }, discovery);

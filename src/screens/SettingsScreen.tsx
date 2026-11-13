@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { View, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, TouchableOpacity, ScrollView } from 'react-native';
 import { Text } from '../components/Typography';
 import { useFocusEffect } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
@@ -10,7 +10,7 @@ import { getAllSongs } from '../db/Database';
 import { exportLibrary, importLibrary } from '../utils/exportImport';
 import ScreenHeader from '../components/ScreenHeader';
 import { FONT_CHOICES } from '../theme/fonts';
-import { confirmThen } from '../utils/notify';
+import { confirmThen, notify } from '../utils/notify';
 import { isSignedIn, isSyncConfigured, NotSignedInError, signOut } from '../sync/googleAuth';
 import { getLastSyncedAt, syncNow } from '../sync/syncService';
 
@@ -48,7 +48,7 @@ export default function SettingsScreen() {
       setLastSynced(await getLastSyncedAt());
     } catch (e: any) {
       // Closing the Google sign-in screen is not an error worth a dialog.
-      if (!(e instanceof NotSignedInError)) Alert.alert('Sync failed', e?.message || 'Something went wrong.');
+      if (!(e instanceof NotSignedInError)) notify('Sync failed', e?.message || 'Something went wrong.');
     } finally {
       setSyncing(false);
     }
@@ -70,7 +70,7 @@ export default function SettingsScreen() {
     try {
       await exportLibrary();
     } catch (e: any) {
-      Alert.alert('Export failed', e?.message || 'Something went wrong.');
+      notify('Export failed', e?.message || 'Something went wrong.');
     }
   };
 
@@ -78,10 +78,10 @@ export default function SettingsScreen() {
     try {
       const result = await importLibrary();
       if (result) {
-        Alert.alert('Import complete', `${result.imported} added, ${result.skipped} skipped (already in your library).`);
+        notify('Import complete', `${result.imported} added, ${result.skipped} skipped (already in your library).`);
       }
     } catch (e: any) {
-      Alert.alert('Import failed', e?.message || 'Something went wrong.');
+      notify('Import failed', e?.message || 'Something went wrong.');
     }
   };
 

@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { Platform } from 'react-native';
+import { markLocalEdit } from '../utils/localEdits';
 
 export interface SongLine {
   text: string;
@@ -241,6 +242,7 @@ export async function addSong(song: Song): Promise<number> {
     newUid(),
     now
   );
+  markLocalEdit();
   return result.lastInsertRowId as number;
 }
 
@@ -265,17 +267,20 @@ export async function updateSong(song: Song): Promise<void> {
     Date.now(),
     song.id as number
   );
+  markLocalEdit();
 }
 
 /** Sets the cover: a URL, '' for none, or null to have it looked up again. */
 export async function setSongCover(id: number, cover: string | null): Promise<void> {
   const database = await getDb();
   await database.runAsync('UPDATE songs SET cover=?, updatedAt=? WHERE id=?', cover, Date.now(), id);
+  markLocalEdit();
 }
 
 export async function setFavorite(id: number, favorite: boolean): Promise<void> {
   const database = await getDb();
   await database.runAsync('UPDATE songs SET favorite=?, updatedAt=? WHERE id=?', favorite ? 1 : 0, Date.now(), id);
+  markLocalEdit();
 }
 
 /** Marks the song deleted. The row stays so the deletion can sync; its collection links stay too, hidden. */
@@ -283,6 +288,7 @@ export async function deleteSong(id: number): Promise<void> {
   const database = await getDb();
   const now = Date.now();
   await database.runAsync('UPDATE songs SET deletedAt=?, updatedAt=? WHERE id=?', now, now, id);
+  markLocalEdit();
 }
 
 /** Brings a deleted song back (used by Undo). Its collections come back with it. */
@@ -292,6 +298,7 @@ export async function restoreSong(song: Song, collectionIds: number[]): Promise<
   const done = await database.runAsync('UPDATE songs SET deletedAt=NULL, updatedAt=? WHERE id=?', now, song.id as number);
   if (done.changes > 0) {
     for (const cid of collectionIds) await setSongInCollection(cid, song.id as number, true);
+    markLocalEdit();
     return;
   }
   // The row is gone (should not happen): put it back under its old id.
@@ -315,6 +322,7 @@ export async function restoreSong(song: Song, collectionIds: number[]): Promise<
     now
   );
   for (const cid of collectionIds) await setSongInCollection(cid, song.id as number, true);
+  markLocalEdit();
 }
 
 export async function getAllSongs(): Promise<Song[]> {
@@ -372,6 +380,7 @@ export async function addCollection(name: string): Promise<number> {
     newUid(),
     now
   );
+  markLocalEdit();
   return result.lastInsertRowId as number;
 }
 
@@ -380,6 +389,7 @@ export async function deleteCollection(id: number): Promise<void> {
   const database = await getDb();
   const now = Date.now();
   await database.runAsync('UPDATE collections SET deletedAt=?, updatedAt=? WHERE id=?', now, now, id);
+  markLocalEdit();
 }
 
 export async function getAllCollections(): Promise<Collection[]> {
@@ -417,6 +427,7 @@ export async function setSongInCollection(collectionId: number, songId: number, 
     Date.now(),
     inCollection ? 0 : 1
   );
+  markLocalEdit();
 }
 
 export async function getSongsByIds(ids: number[]): Promise<Song[]> {
