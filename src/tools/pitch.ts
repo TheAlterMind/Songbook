@@ -24,7 +24,8 @@ export function detectPitch(input: Float32Array, sampleRate: number, minFreq = 6
     const v = input[i] - mean;
     energy += v * v;
   }
-  if (Math.sqrt(energy / size) < 0.008) return null;
+  // YIN does not depend on loudness, so this only has to rule out true silence (a phone mic can be quiet).
+  if (Math.sqrt(energy / size) < 0.0012) return null;
 
   // Difference function, then its cumulative mean normalised version.
   const diff = new Float32Array(tauMax + 1);

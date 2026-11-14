@@ -1,10 +1,10 @@
 import React, { useCallback, useState } from 'react';
 import { View, FlatList, TouchableOpacity, StyleSheet } from 'react-native';
-import { Text } from '../components/Typography';
+import { Text, TextInput } from '../components/Typography';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, LAYOUT } from '../theme/tokens';
-import { getAllCollections, getSongCollectionIds, setSongInCollection, Collection } from '../db/Database';
+import { addCollection, getAllCollections, getSongCollectionIds, setSongInCollection, Collection } from '../db/Database';
 
 export default function AddToCollectionScreen() {
   const navigation = useNavigation<any>();
@@ -13,6 +13,7 @@ export default function AddToCollectionScreen() {
   const { colors, radius } = useTheme();
   const [collections, setCollections] = useState<Collection[]>([]);
   const [memberIds, setMemberIds] = useState<Set<number>>(new Set());
+  const [name, setName] = useState('');
 
   const load = useCallback(async () => {
     setCollections(await getAllCollections());
@@ -31,6 +32,15 @@ export default function AddToCollectionScreen() {
     load();
   };
 
+  const onCreate = async () => {
+    const trimmed = name.trim();
+    if (!trimmed) return;
+    const id = await addCollection(trimmed);
+    await setSongInCollection(id, songId, true);
+    setName('');
+    load();
+  };
+
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={{ paddingTop: LAYOUT.top, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center' }}>
@@ -46,10 +56,40 @@ export default function AddToCollectionScreen() {
         data={collections}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ padding: 20, gap: 8 }}
-        ListEmptyComponent={
-          <Text style={{ textAlign: 'center', color: colors.neutral500, marginTop: 40 }}>
-            No collections yet — create one from the Collections tab.
-          </Text>
+        keyboardShouldPersistTaps="handled"
+        ListHeaderComponent={
+          // A new collection is created with this song already in it.
+          <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+            <TextInput
+              value={name}
+              onChangeText={setName}
+              onSubmitEditing={onCreate}
+              returnKeyType="done"
+              placeholder="New collection name"
+              placeholderTextColor={colors.neutral500}
+              style={{
+                flex: 1,
+                backgroundColor: colors.surface,
+                borderRadius: radius.md,
+                paddingHorizontal: 12,
+                paddingVertical: 10,
+                color: colors.text,
+              }}
+            />
+            <TouchableOpacity
+              onPress={onCreate}
+              style={{
+                borderWidth: 1,
+                borderColor: colors.accent,
+                borderRadius: radius.md,
+                paddingHorizontal: 16,
+                justifyContent: 'center',
+                opacity: name.trim() ? 1 : 0.4,
+              }}
+            >
+              <Text style={{ color: colors.accent, fontWeight: '600' }}>Create</Text>
+            </TouchableOpacity>
+          </View>
         }
         renderItem={({ item }) => {
           const checked = memberIds.has(item.id as number);

@@ -99,12 +99,12 @@ export default function LibraryScreen() {
     load();
   };
 
-  // Swipe right: opens the list of collections to add the song to. Swipe left: shows Delete.
-  const swipeRightFor = (song: Song) => ({
+  // Swipe right: shows an Add to collection button. Swipe left: shows Delete.
+  const leftActionFor = (song: Song) => ({
     label: 'Add to collection',
     background: colors.accent,
     color: colors.accent100,
-    onTrigger: () => navigation.navigate('AddToCollection', { songId: song.id }),
+    onPress: () => navigation.navigate('AddToCollection', { songId: song.id }),
   });
   const rightActionsFor = (song: Song) => [
     {
@@ -233,7 +233,7 @@ export default function LibraryScreen() {
           )
         }
         renderItem={({ item }) => (
-          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} swipeRight={swipeRightFor(item)} rightActions={rightActionsFor(item)} radius={radius.md}>
+          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} leftAction={leftActionFor(item)} rightActions={rightActionsFor(item)} radius={radius.md}>
           <TouchableOpacity
             onPress={() => {
               if (tapClosedSwipe.current) {

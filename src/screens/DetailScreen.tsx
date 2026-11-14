@@ -1,5 +1,5 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, TouchableOpacity, ScrollView, Pressable, StyleSheet, BackHandler } from 'react-native';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { View, TouchableOpacity, ScrollView, Pressable, StyleSheet, BackHandler, GestureResponderEvent } from 'react-native';
 import { Text } from '../components/Typography';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -53,6 +53,29 @@ export default function DetailScreen() {
     });
     return () => sub.remove();
   }, [menuOpen]);
+
+  // Double tap on the lyrics moves by a page: the top third goes back, the rest goes forward.
+  const scrollRef = useRef<ScrollView>(null);
+  const scrollY = useRef(0);
+  const viewH = useRef(0);
+  const areaRef = useRef<View>(null);
+  const lastTap = useRef(0);
+  const onLyricsTap = (e: GestureResponderEvent) => {
+    const now = Date.now();
+    if (now - lastTap.current > 320) {
+      lastTap.current = now;
+      return;
+    }
+    lastTap.current = 0;
+    // locationY is relative to whichever line was touched, so compare the screen position instead.
+    const pageY = e.nativeEvent.pageY;
+    const scrollTo = (back: boolean) => {
+      const page = Math.max(100, viewH.current - 48); // a little overlap so no line is lost
+      scrollRef.current?.scrollTo({ y: Math.max(0, scrollY.current + (back ? -page : page)), animated: true });
+    };
+    if (!areaRef.current) return scrollTo(false);
+    areaRef.current.measureInWindow((_x, top, _w, height) => scrollTo(pageY < top + height / 2));
+  };
 
   if (!song) return null;
 
@@ -127,16 +150,25 @@ export default function DetailScreen() {
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }}>
-        {song.lines.map((line, i) => (
-          <View key={i} style={{ marginBottom: 9 }}>
-            {chordsOn && !!line.chord && (
-              <Text style={{ fontSize, color: colors.accent, fontFamily: 'monospace', lineHeight: fontSize * 1.2 }}>{line.chord}</Text>
-            )}
-            <Text style={{ fontSize, color: colors.text, lineHeight: fontSize * 1.5 }}>{line.text}</Text>
-          </View>
-        ))}
+      <View ref={areaRef} style={{ flex: 1 }} onLayout={(e) => (viewH.current = e.nativeEvent.layout.height)}>
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ padding: 20, paddingBottom: 60, flexGrow: 1 }}
+        onScroll={(e) => (scrollY.current = e.nativeEvent.contentOffset.y)}
+        scrollEventThrottle={16}
+      >
+        <Pressable onPress={onLyricsTap} style={{ flexGrow: 1 }}>
+          {song.lines.map((line, i) => (
+            <View key={i} style={{ marginBottom: 9 }}>
+              {chordsOn && !!line.chord && (
+                <Text style={{ fontSize, color: colors.accent, fontFamily: 'monospace', lineHeight: fontSize * 1.2 }}>{line.chord}</Text>
+              )}
+              <Text style={{ fontSize, color: colors.text, lineHeight: fontSize * 1.5 }}>{line.text}</Text>
+            </View>
+          ))}
+        </Pressable>
       </ScrollView>
+      </View>
 
       {hasQueue && (
         <View

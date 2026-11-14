@@ -13,7 +13,7 @@ type Reading = { name: string; octave: number; cents: number; frequency: number;
 const WINDOW = 4096; // samples looked at each time, before halving the rate
 const HOP = 2048; // new samples needed before looking again (about 20 times a second)
 const IN_TUNE_CENTS = 5;
-const SILENCE_MS = 700; // without a clear note this long, the reading goes away
+const SILENCE_MS = 1200; // without a clear note this long, the reading goes away
 
 export default function Tuner({ active }: { active: boolean }) {
   const { colors, radius } = useTheme();
@@ -47,7 +47,7 @@ export default function Tuner({ active }: { active: boolean }) {
     const found = detectPitch(half, sampleRate / 2, 60, 1200);
 
     const now = Date.now();
-    if (!found || found.clarity < 0.8) {
+    if (!found || found.clarity < 0.7) {
       if (now - lastNote.current > SILENCE_MS) {
         recent.current = [];
         setReading(null);
