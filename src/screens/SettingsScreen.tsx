@@ -4,6 +4,7 @@ import { Text } from '../components/Typography';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme, ACCENT_OPTIONS } from '../theme/ThemeContext';
 import { TYPE } from '../theme/tokens';
+import { useTabBarSpace } from '../components/TabBar';
 import { CAN_SCALE, SCALE_CHOICES } from '../theme/scale';
 import { ListItem, ListSection, OptionSheet, Switch, TonalButton } from '../components/Controls';
 import { getAllSongs } from '../db/Database';
@@ -34,6 +35,7 @@ const THEME_CHOICES = [
 
 export default function SettingsScreen() {
   const { colors, settings, updateSettings, resetSettings } = useTheme();
+  const tabSpace = useTabBarSpace();
   const navigation = useNavigation<any>();
   const [songCount, setSongCount] = useState(0);
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -110,7 +112,7 @@ export default function SettingsScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
     <ScreenHeader title="Settings" />
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: 24, gap: 12 }}>
+    <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingHorizontal: 18, paddingTop: 8, paddingBottom: tabSpace + 12, gap: 12 }}>
 
       <ListSection header="Reading">
         <ListItem

@@ -63,6 +63,7 @@ export default function WebSearchScreen() {
       <View style={{ marginTop: LAYOUT.top, height: LAYOUT.headerHeight, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 6 }}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
+          accessibilityLabel="Back"
           style={{ width: LAYOUT.iconButton, height: LAYOUT.iconButton, alignItems: 'center', justifyContent: 'center' }}
         >
           <BackChevronIcon color={colors.text} size={ICON.button} />

@@ -155,6 +155,7 @@ export default function DetailScreen() {
         <TouchableOpacity
           onPress={() => navigation.goBack()}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          accessibilityLabel="Back"
           style={styles.iconBtn}
         >
           <BackChevronIcon color={colors.text} size={ICON.button} />
@@ -167,7 +168,7 @@ export default function DetailScreen() {
         <TouchableOpacity onPress={() => setFull(true)} accessibilityLabel="Full screen" style={styles.iconBtn}>
           <FullscreenIcon color={colors.accent} size={ICON.button} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setMenuOpen((o) => !o)} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => setMenuOpen((o) => !o)} accessibilityLabel="More" style={styles.iconBtn}>
           <MoreIcon color={colors.accent} size={ICON.button} />
         </TouchableOpacity>
       </View>
@@ -336,7 +337,7 @@ export default function DetailScreen() {
                 }}
                 style={styles.menuItem}
               >
-                <Text style={{ fontSize: TYPE.body, color: it.danger ? '#ff4d4f' : colors.text }}>{it.label}</Text>
+                <Text style={{ fontSize: TYPE.body, color: it.danger ? colors.danger : colors.text }}>{it.label}</Text>
               </TouchableOpacity>
             ))}
           </View>

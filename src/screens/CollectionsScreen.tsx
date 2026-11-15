@@ -5,6 +5,7 @@ import { Text, TextInput } from '../components/Typography';
 import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, ICON } from '../theme/tokens';
+import { useTabBarSpace } from '../components/TabBar';
 import { getAllCollections, addCollection, deleteCollection, getCollectionSongIds, Collection } from '../db/Database';
 import { ChevronRightIcon } from '../components/Icons';
 import ScreenHeader from '../components/ScreenHeader';
@@ -12,6 +13,7 @@ import ScreenHeader from '../components/ScreenHeader';
 export default function CollectionsScreen() {
   const navigation = useNavigation<any>();
   const { colors, radius } = useTheme();
+  const tabSpace = useTabBarSpace();
   const [collections, setCollections] = useState<(Collection & { count: number })[]>([]);
   const [name, setName] = useState('');
 
@@ -49,7 +51,7 @@ export default function CollectionsScreen() {
       <FlatList
         data={collections}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 20, gap: 8 }}
+        contentContainerStyle={{ padding: 20, paddingBottom: tabSpace + 12, gap: 8 }}
         renderItem={({ item }) => (
           <TouchableOpacity
             onPress={() => navigation.navigate('CollectionDetail', { collectionId: item.id })}

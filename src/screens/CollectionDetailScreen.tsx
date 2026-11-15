@@ -58,7 +58,11 @@ export default function CollectionDetailScreen() {
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={{ paddingTop: LAYOUT.top, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={{ padding: 6 }}>
+        <TouchableOpacity
+          onPress={() => navigation.goBack()}
+          accessibilityLabel="Back"
+          style={{ width: LAYOUT.iconButton, height: LAYOUT.iconButton, alignItems: 'center', justifyContent: 'center' }}
+        >
           <BackChevronIcon color={colors.text} size={ICON.button} />
         </TouchableOpacity>
         <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text, flex: 1 }} numberOfLines={1}>

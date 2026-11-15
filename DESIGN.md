@@ -11,6 +11,7 @@ colors:
   divider-grey: "#3E3C42"
   page-white: "#EAE9EF"
   quiet-grey: "#9A989E"
+  alarm-red: "#ff4d4f"
 typography:
   title:
     fontFamily: "system-ui, Roboto, sans-serif"
@@ -121,6 +122,9 @@ A near-black page tinted with violet, flat grey surfaces a step above it, and a 
 - **Violet Signal** (#A78BFA): the only accent. Buttons, the add button, active tab icons, selected tags, links like "Cancel" and "Got it", the in-tune needle and the pulsing tap ring on the beat. The app lets the user switch it to Teal (#2FB6A0), Amber (#D89C46) or Coral (#EA6A50); every other colour is tinted 5-10% with whichever accent is chosen.
 - **Ink on Violet** (#0B0814): text and icons drawn on top of the accent.
 - **Violet Night** (#3A3158): the accent's deep tint, used behind accent-coloured tags and the in-tune zone on the tuner bar.
+
+### Alert
+- **Alarm Red** (#ff4d4f; #d9363e in the light theme): destructive actions only, namely the swipe-left Delete button and the Delete item in the song menu. It is the one colour that is never tinted by the chosen accent.
 
 ### Neutral
 - **Stage Black** (#050408): the page behind everything (97% black, 3% accent).

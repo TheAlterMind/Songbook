@@ -79,7 +79,7 @@ export default function BrowserScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
       <View style={[styles.head, { marginTop: LAYOUT.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconBtn}>
+        <TouchableOpacity onPress={() => navigation.goBack()} accessibilityLabel="Back" style={styles.iconBtn}>
           <BackChevronIcon color={colors.text} size={ICON.button} />
         </TouchableOpacity>
         <Text numberOfLines={1} style={{ flex: 1, fontSize: TYPE.label, color: colors.neutral500 }}>

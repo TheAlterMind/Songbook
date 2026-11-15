@@ -142,10 +142,20 @@ export default function EditScreen() {
               <Text style={{ color: colors.neutral500, fontSize: TYPE.label }}>Chords (optional)</Text>
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
                 <Text style={{ fontSize: TYPE.tiny, color: colors.neutral500 }}>Transpose</Text>
-                <TouchableOpacity onPress={() => transpose(-1)} style={[styles.tinyBtn, { borderColor: colors.divider }]}>
+                <TouchableOpacity
+                  onPress={() => transpose(-1)}
+                  accessibilityLabel="Transpose down one semitone"
+                  hitSlop={{ top: 9, bottom: 9, left: 9, right: 9 }}
+                  style={[styles.tinyBtn, { borderColor: colors.divider }]}
+                >
                   <SortDownIcon color={colors.text} size={10} />
                 </TouchableOpacity>
-                <TouchableOpacity onPress={() => transpose(1)} style={[styles.tinyBtn, { borderColor: colors.divider }]}>
+                <TouchableOpacity
+                  onPress={() => transpose(1)}
+                  accessibilityLabel="Transpose up one semitone"
+                  hitSlop={{ top: 9, bottom: 9, left: 9, right: 9 }}
+                  style={[styles.tinyBtn, { borderColor: colors.divider }]}
+                >
                   <SortUpIcon color={colors.text} size={10} />
                 </TouchableOpacity>
               </View>

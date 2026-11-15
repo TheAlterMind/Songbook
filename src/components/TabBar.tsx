@@ -8,8 +8,17 @@ import { PlusIcon, DiceIcon } from './Icons';
 import { getAllSongs } from '../db/Database';
 import { notify, errorText } from '../utils/notify';
 
-const ADD_SIZE = 68; // button plus ring, rising LAYOUT.tabProtrude above the bar and ending 4px above its bottom edge
-const ADD_RING = 4; // drawn inside ADD_SIZE, so the visible button is 60
+const ADD_SIZE = 60; // the button rises above the bar and ends 4px above its bottom edge
+const ADD_TOP = 4; // no ring: the bar and the page behind it are different shades, so a ring in either would show as a notch
+
+/**
+ * The height the bottom menu takes, including the part where the + button rises. The menu floats over the screens
+ * (so songs show beside the button); a screen with a list or scroll view adds this to its bottom padding.
+ */
+export function useTabBarSpace(): number {
+  const insets = useSafeAreaInsets();
+  return LAYOUT.tabProtrude + LAYOUT.tabBar + insets.bottom;
+}
 
 /**
  * The bottom menu: List, Collections, a + button that rises a little above the bar, a dice, Settings.
@@ -62,7 +71,12 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
 
   return (
     // The transparent top part leaves room for the + button, and keeps its whole area tappable.
-    <View pointerEvents="box-none" style={{ height: LAYOUT.tabProtrude + LAYOUT.tabBar + insets.bottom }}>
+    // Absolute, so the navigator reserves no room for it: the screens run to the bottom edge and the list shows
+    // through the transparent part beside the + button. Screens add useTabBarSpace to their bottom padding.
+    <View
+      pointerEvents="box-none"
+      style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: LAYOUT.tabProtrude + LAYOUT.tabBar + insets.bottom }}
+    >
       <View style={[styles.bar, { height: LAYOUT.tabBar + insets.bottom, backgroundColor: colors.menuBg, borderTopWidth: 1, borderTopColor: colors.well }]} />
       <View style={[styles.row, { top: LAYOUT.tabProtrude, height: LAYOUT.tabBar }]}>
         {screenTab('Library')}
@@ -78,7 +92,7 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
         activeOpacity={0.85}
         accessibilityRole="button"
         accessibilityLabel="Add song"
-        style={[styles.add, { backgroundColor: colors.accent, borderColor: colors.bg, marginLeft: -ADD_SIZE / 2 }]}
+        style={[styles.add, { backgroundColor: colors.accent, marginLeft: -ADD_SIZE / 2 }]}
       >
         <PlusIcon color={colors.accent100} size={ICON.button + 10} />
       </TouchableOpacity>
@@ -92,13 +106,11 @@ const styles = StyleSheet.create({
   slot: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   add: {
     position: 'absolute',
-    top: 0,
+    top: ADD_TOP,
     left: '50%',
     width: ADD_SIZE,
     height: ADD_SIZE,
     borderRadius: ADD_SIZE / 2,
-    // The ring matches the screen behind it, so the button looks cut out of the bar.
-    borderWidth: ADD_RING,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -12,6 +12,7 @@ import SwipeRow, { SwipeRowHandle, closeOpenRow, isAnyRowOpen } from '../compone
 import { sortSongs, SORT_OPTIONS, DATE_SORTS } from '../utils/sort';
 import { getOpenedMap } from '../utils/lastOpened';
 import { hasSeenHint, markHintSeen } from '../utils/hints';
+import { useTabBarSpace } from '../components/TabBar';
 import { backfillCovers } from '../services/covers';
 import Cover from '../components/Cover';
 import { ExpandedViewIcon, CompactViewIcon, SquareIcon, SortUpIcon, SortDownIcon, StarIcon, SearchIcon } from '../components/Icons';
@@ -20,6 +21,7 @@ export default function LibraryScreen() {
   const navigation = useNavigation<any>();
   const { colors, radius, settings, updateSettings } = useTheme();
   const { showUndo, showMessage } = useToast();
+  const tabSpace = useTabBarSpace();
   const rowRefs = useRef<Record<number, SwipeRowHandle | null>>({});
   // True when the touch that is happening closed a swipe, so the row under it should not open its song.
   const tapClosedSwipe = useRef(false);
@@ -132,7 +134,7 @@ export default function LibraryScreen() {
   const rightActionsFor = (song: Song) => [
     {
       label: 'Delete',
-      background: '#ff4d4f',
+      background: colors.danger,
       color: '#fff',
       onPress: () => deleteWithUndo(song, showUndo).catch(() => {}),
     },
@@ -219,7 +221,7 @@ export default function LibraryScreen() {
       <FlatList
         data={listData}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: 18 }}
+        contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: tabSpace + 12 }}
         ListHeaderComponent={
           <>
           {lastPlayed && (
@@ -227,6 +229,7 @@ export default function LibraryScreen() {
               <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginBottom: 8 }}>Last played</Text>
               <TouchableOpacity
                 onPress={() => navigation.navigate('Detail', { songId: lastPlayed.id })}
+                accessibilityLabel={`Last played: ${lastPlayed.title}`}
                 style={{
                   backgroundColor: colors.accent800,
                   borderColor: colors.accent,

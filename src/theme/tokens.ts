@@ -33,6 +33,7 @@ export type Colors = {
   accent100: string; // text and icons drawn on the accent
   accent800: string;
   accent: string;
+  danger: string; // delete actions and destructive menu items
   outer: string; // margin around the column on wide windows
 };
 
@@ -54,6 +55,7 @@ export function darkColors(accent: string): Colors {
     accent800: tint(0x00, accent, 0.35),
     outer: tint(0x00, accent, 0.03),
     accent,
+    danger: '#ff4d4f',
   };
 }
 
@@ -72,6 +74,7 @@ export function lightColors(accent: string): Colors {
     accent800: '#E9E3FB',
     outer: '#E9EEF0',
     accent,
+    danger: '#d9363e',
   };
 }
 

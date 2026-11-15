@@ -5,6 +5,7 @@ import { Text } from '../components/Typography';
 import { BackChevronIcon } from '../components/Icons';
 import { useTheme } from '../theme/ThemeContext';
 import { TYPE, LAYOUT } from '../theme/tokens';
+import { useTabBarSpace } from '../components/TabBar';
 import Metronome from '../tools/Metronome';
 import Tuner from '../tools/Tuner';
 
@@ -18,6 +19,7 @@ type Tool = 'metronome' | 'tuner';
  */
 export default function ToolsScreen() {
   const { colors } = useTheme();
+  const tabSpace = useTabBarSpace();
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const [tool, setTool] = useState<Tool>('metronome');
@@ -42,7 +44,7 @@ export default function ToolsScreen() {
         </TouchableOpacity>
       </View>
       {/* The bottom padding keeps the tool clear of the menu. */}
-      <View style={{ flex: 1, paddingHorizontal: 18, paddingBottom: 16 }}>
+      <View style={{ flex: 1, paddingHorizontal: 18, paddingBottom: tabSpace + 16 }}>
         {tool === 'metronome' ? (
           <Metronome />
         ) : (
