@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, ScrollView, Pressable, StyleSheet, BackHandler, GestureResponderEvent } from 'react-native';
+import { View, TouchableOpacity, ScrollView, Pressable, StyleSheet, BackHandler, Animated, StatusBar, GestureResponderEvent } from 'react-native';
 import { Text } from '../components/Typography';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,7 +12,7 @@ import { markOpened } from '../utils/lastOpened';
 import { useToast } from '../components/Toast';
 import { notify, errorText } from '../utils/notify';
 import { Switch } from '../components/Controls';
-import { BackChevronIcon, MoreIcon } from '../components/Icons';
+import { BackChevronIcon, MoreIcon, FullscreenIcon, ExitFullscreenIcon } from '../components/Icons';
 
 export default function DetailScreen() {
   const navigation = useNavigation<any>();
@@ -44,21 +44,42 @@ export default function DetailScreen() {
     }, [settings.keepAwake])
   );
 
-  // The Back key closes the menu instead of leaving the song.
+  // Full screen: only the lyrics. The Back key leaves it before it leaves the song.
+  const [full, setFull] = useState(false);
+
+  // The Back key closes the menu, then full screen, instead of leaving the song.
   useEffect(() => {
-    if (!menuOpen) return;
+    if (!menuOpen && !full) return;
     const sub = BackHandler.addEventListener('hardwareBackPress', () => {
-      setMenuOpen(false);
+      if (menuOpen) setMenuOpen(false);
+      else setFull(false);
       return true;
     });
     return () => sub.remove();
-  }, [menuOpen]);
+  }, [menuOpen, full]);
 
   // Double tap on the lyrics moves by a page: the top third goes back, the rest goes forward.
   const scrollRef = useRef<ScrollView>(null);
   const scrollY = useRef(0);
   const viewH = useRef(0);
   const areaRef = useRef<View>(null);
+  // The position bar: its height and travel come from how much of the song fits on screen.
+  const contentH = useRef(0);
+  const scrollAnim = useRef(new Animated.Value(0)).current;
+  const ratio = useRef(new Animated.Value(1)).current;
+  const [thumbH, setThumbH] = useState(0);
+  const [scrollable, setScrollable] = useState(false);
+  const syncThumb = () => {
+    const v = viewH.current;
+    const c = contentH.current;
+    if (v <= 0 || c <= v + 1) {
+      setScrollable(false);
+      return;
+    }
+    ratio.setValue(v / c);
+    setThumbH(Math.max(24, (v * v) / c));
+    setScrollable(true);
+  };
   const lastTap = useRef(0);
   const onLyricsTap = (e: GestureResponderEvent) => {
     const now = Date.now();
@@ -107,6 +128,8 @@ export default function DetailScreen() {
 
   return (
     <View style={{ flex: 1, backgroundColor: colors.bg }}>
+      <StatusBar hidden={full} />
+      {!full && (
       <View style={styles.header}>
         <TouchableOpacity
           onPress={() => navigation.goBack()}
@@ -120,57 +143,120 @@ export default function DetailScreen() {
             {song.title}
           </Text>
         </TouchableOpacity>
+        <TouchableOpacity onPress={() => setFull(true)} accessibilityLabel="Full screen" style={styles.iconBtn}>
+          <FullscreenIcon color={colors.accent} size={ICON.button} />
+        </TouchableOpacity>
         <TouchableOpacity onPress={() => setMenuOpen((o) => !o)} style={styles.iconBtn}>
           <MoreIcon color={colors.accent} size={ICON.button} />
         </TouchableOpacity>
       </View>
+      )}
 
-      <View style={styles.toolbar}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
-          <TouchableOpacity
-            onPress={() => setFontSize((f) => Math.max(16, f - 1))}
-            hitSlop={{ top: 8, bottom: 8 }}
-            style={[styles.smallBtn, { flex: 1, borderColor: colors.divider }]}
-          >
-            <Text style={{ color: colors.accent, fontSize: TYPE.small }}>A−</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            onPress={() => setFontSize((f) => Math.min(30, f + 1))}
-            hitSlop={{ top: 8, bottom: 8 }}
-            style={[styles.smallBtn, { flex: 1, borderColor: colors.divider }]}
-          >
-            <Text style={{ color: colors.accent, fontSize: TYPE.body }}>A+</Text>
-          </TouchableOpacity>
+      <View
+        ref={areaRef}
+        style={{ flex: 1 }}
+        onLayout={(e) => {
+          viewH.current = e.nativeEvent.layout.height;
+          syncThumb();
+        }}
+      >
+      <ScrollView
+        ref={scrollRef}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingTop: full ? LAYOUT.top + LAYOUT.iconButton + 4 : 0, paddingBottom: 80, flexGrow: 1 }}
+        onScroll={(e) => {
+          scrollY.current = e.nativeEvent.contentOffset.y;
+          scrollAnim.setValue(scrollY.current);
+        }}
+        onContentSizeChange={(_w, h) => {
+          contentH.current = h;
+          syncThumb();
+        }}
+        scrollEventThrottle={16}
+      >
+        {/* The controls are the first thing in the scroll: they are there when you open the song, and they
+            move out of the way while you read. */}
+        {!full && (
+        <View style={styles.toolbar}>
+          <View style={[styles.sizeGroup, { borderColor: colors.divider }]}>
+            <TouchableOpacity
+              onPress={() => setFontSize((f) => Math.max(16, f - 2))}
+              accessibilityLabel="Smaller text"
+              style={styles.sizeBtn}
+            >
+              <Text style={{ color: colors.accent, fontSize: TYPE.small, fontWeight: '600' }}>A</Text>
+            </TouchableOpacity>
+            <View style={{ width: 1, alignSelf: 'stretch', backgroundColor: colors.divider }} />
+            <TouchableOpacity
+              onPress={() => setFontSize((f) => Math.min(36, f + 2))}
+              accessibilityLabel="Larger text"
+              style={styles.sizeBtn}
+            >
+              <Text style={{ color: colors.accent, fontSize: TYPE.title, fontWeight: '600' }}>A</Text>
+            </TouchableOpacity>
+          </View>
           {hasChords && (
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginLeft: 6 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
               <Text style={{ fontSize: TYPE.label, color: colors.text }}>Chords</Text>
               <Switch value={chordsOn} onChange={setChordsOn} />
             </View>
           )}
         </View>
-      </View>
+        )}
 
-      <View ref={areaRef} style={{ flex: 1 }} onLayout={(e) => (viewH.current = e.nativeEvent.layout.height)}>
-      <ScrollView
-        ref={scrollRef}
-        contentContainerStyle={{ padding: 20, paddingBottom: 60, flexGrow: 1 }}
-        onScroll={(e) => (scrollY.current = e.nativeEvent.contentOffset.y)}
-        scrollEventThrottle={16}
-      >
         <Pressable onPress={onLyricsTap} style={{ flexGrow: 1 }}>
           {song.lines.map((line, i) => (
-            <View key={i} style={{ marginBottom: 9 }}>
+            // A chord sits right on the line it belongs to; the space between lines separates the lines.
+            <View key={i} style={{ marginBottom: 8 }}>
               {chordsOn && !!line.chord && (
-                <Text style={{ fontSize, color: colors.accent, fontFamily: 'monospace', lineHeight: fontSize * 1.2 }}>{line.chord}</Text>
+                // More air above a chord line than below it, so it reads as belonging to the words under it.
+                <Text
+                  style={{
+                    fontSize,
+                    color: colors.accent,
+                    fontFamily: 'monospace',
+                    fontWeight: '700',
+                    lineHeight: fontSize * 1.25,
+                    letterSpacing: 0.3,
+                    marginTop: 8,
+                  }}
+                >
+                  {line.chord}
+                </Text>
               )}
-              <Text style={{ fontSize, color: colors.text, lineHeight: fontSize * 1.5 }}>{line.text}</Text>
+              {/* Light text on a dark page: a little more leading and tracking than the default. */}
+              <Text style={{ fontSize, color: colors.text, lineHeight: fontSize * 1.55, letterSpacing: 0.15 }}>{line.text}</Text>
             </View>
           ))}
         </Pressable>
       </ScrollView>
+      {/* Where you are in the song: a thin bar on the right edge, only when the song is longer than the screen. */}
+      {scrollable && (
+        <View pointerEvents="none" style={styles.thumbTrack}>
+          <Animated.View
+            style={{
+              width: 3,
+              borderRadius: 2,
+              height: thumbH,
+              backgroundColor: colors.neutral500,
+              opacity: 0.6,
+              transform: [{ translateY: Animated.multiply(scrollAnim, ratio) }],
+            }}
+          />
+        </View>
+      )}
       </View>
 
-      {hasQueue && (
+      {full && (
+        <TouchableOpacity
+          onPress={() => setFull(false)}
+          accessibilityLabel="Leave full screen"
+          style={[styles.exitFull, { backgroundColor: colors.surface, top: LAYOUT.top }]}
+        >
+          <ExitFullscreenIcon color={colors.accent} size={ICON.button} />
+        </TouchableOpacity>
+      )}
+
+      {hasQueue && !full && (
         <View
           style={{
             flexDirection: 'row',
@@ -244,7 +330,19 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 6 },
   },
   menuItem: { height: 44, paddingHorizontal: 16, justifyContent: 'center' },
-  toolbar: { paddingHorizontal: 20, marginTop: 4 },
+  toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, paddingBottom: 18 },
+  exitFull: {
+    position: 'absolute',
+    right: 12,
+    width: LAYOUT.iconButton,
+    height: LAYOUT.iconButton,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    opacity: 0.85,
+  },
+  sizeGroup: { flexDirection: 'row', alignItems: 'center', borderWidth: 1, borderRadius: 16, overflow: 'hidden' },
+  sizeBtn: { width: 112, height: 44, alignItems: 'center', justifyContent: 'center' },
+  thumbTrack: { position: 'absolute', right: 3, top: 0, bottom: 0, width: 3 },
   queueBtn: { flex: 1, height: 40, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
-  smallBtn: { width: 48, height: 36, borderRadius: 16, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
 });

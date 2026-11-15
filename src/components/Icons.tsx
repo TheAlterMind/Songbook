@@ -157,6 +157,38 @@ export function SquareIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: Ico
   );
 }
 
+/** Four corners pointing outwards: show the song full screen. */
+export function FullscreenIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path
+        d="M7 18 V9 A2 2 0 0 1 9 7 H18 M30 7 H39 A2 2 0 0 1 41 9 V18 M41 30 V39 A2 2 0 0 1 39 41 H30 M18 41 H9 A2 2 0 0 1 7 39 V30"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
+/** Four corners pointing inwards: leave full screen. */
+export function ExitFullscreenIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
+  return (
+    <Svg width={size} height={size} viewBox="0 0 48 48">
+      <Path
+        d="M7 18 H16 A2 2 0 0 0 18 16 V7 M30 7 V16 A2 2 0 0 0 32 18 H41 M41 30 H32 A2 2 0 0 0 30 32 V41 M18 41 V32 A2 2 0 0 0 16 30 H7"
+        fill="none"
+        stroke={color}
+        strokeWidth={strokeWidth}
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </Svg>
+  );
+}
+
 /** A die showing five, for the random song button. */
 export function DiceIcon({ color = '#000', size = 20, strokeWidth = 3.2 }: IconProps) {
   return (
