@@ -170,7 +170,7 @@ export default function SettingsScreen() {
           description="Keeps ticking while you read a song."
           onPress={() => navigation.navigate('Tools', { tool: 'metronome' })}
         />
-        <ListItem title="Tuner" description="Listens through the microphone." onPress={() => navigation.navigate('Tools', { tool: 'tuner' })} />
+        <ListItem title="Guitar tuner" description="Listens through the microphone." onPress={() => navigation.navigate('Tools', { tool: 'tuner' })} />
       </ListSection>
 
       <ListSection header="Library">

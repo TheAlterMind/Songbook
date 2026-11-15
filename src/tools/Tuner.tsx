@@ -1,25 +1,50 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, TouchableOpacity, Animated, LayoutChangeEvent } from 'react-native';
+import { View, TouchableOpacity, Animated, LayoutChangeEvent, BackHandler } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Text } from '../components/Typography';
 import { useTheme } from '../theme/ThemeContext';
-import { TYPE } from '../theme/tokens';
-import { detectPitch, GUITAR_STRINGS, nearestGuitarString, noteFromFrequency } from './pitch';
+import { TYPE, ICON } from '../theme/tokens';
+import { ChevronRightIcon } from '../components/Icons';
+import { detectPitch, nearestGuitarString, TUNINGS } from './pitch';
 import { useMicrophone } from './useMicrophone';
-
-type Mode = 'chromatic' | 'guitar';
 
 type Reading = { name: string; octave: number; cents: number; frequency: number; stringLabel?: string };
 
 const WINDOW = 4096; // samples looked at each time, before halving the rate
 const HOP = 2048; // new samples needed before looking again (about 20 times a second)
 const IN_TUNE_CENTS = 5;
+const TUNING_KEY = 'songbook.tuner.tuning';
 const SILENCE_MS = 1200; // without a clear note this long, the reading goes away
 
 export default function Tuner({ active }: { active: boolean }) {
   const { colors, radius } = useTheme();
-  const [mode, setMode] = useState<Mode>('chromatic');
-  const modeRef = useRef(mode);
-  modeRef.current = mode;
+  // The guitar tuning in use, chosen from the list under the Tuning button.
+  const [tuningId, setTuningId] = useState(TUNINGS[0].id);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const tuning = TUNINGS.find((t) => t.id === tuningId) ?? TUNINGS[0];
+  const tuningRef = useRef(tuning);
+  tuningRef.current = tuning;
+  useEffect(() => {
+    AsyncStorage.getItem(TUNING_KEY)
+      .then((id) => {
+        if (id && TUNINGS.some((t) => t.id === id)) setTuningId(id);
+      })
+      .catch(() => {});
+  }, []);
+  const chooseTuning = (id: string) => {
+    setTuningId(id);
+    setPickerOpen(false);
+    AsyncStorage.setItem(TUNING_KEY, id).catch(() => {});
+  };
+  // The Back key closes the list before it leaves the tuner.
+  useEffect(() => {
+    if (!pickerOpen) return;
+    const sub = BackHandler.addEventListener('hardwareBackPress', () => {
+      setPickerOpen(false);
+      return true;
+    });
+    return () => sub.remove();
+  }, [pickerOpen]);
   const [reading, setReading] = useState<Reading | null>(null);
   const [barWidth, setBarWidth] = useState(0);
   const needle = useRef(new Animated.Value(0)).current;
@@ -61,22 +86,19 @@ export default function Tuner({ active }: { active: boolean }) {
     if (recent.current.length > 3) recent.current.shift();
     const frequency = [...recent.current].sort((a, b) => a - b)[Math.floor(recent.current.length / 2)];
 
-    if (modeRef.current === 'guitar') {
-      const { string, cents } = nearestGuitarString(frequency);
-      setReading({ name: string.name, octave: string.octave, cents, frequency, stringLabel: string.label });
-    } else {
-      const note = noteFromFrequency(frequency);
-      setReading({ name: note.name, octave: note.octave, cents: note.cents, frequency });
-    }
+    const { string, cents } = nearestGuitarString(frequency, tuningRef.current.strings);
+    setReading({ name: string.name, octave: string.octave, cents, frequency, stringLabel: string.label });
   };
 
   const mic = useMicrophone(analyse);
 
-  // Stop listening when the user leaves the tuner or the Tools tab.
-  const { stop } = mic;
+  // Listening starts by itself when the tuner is on screen and stops when the user leaves it or the Tools tab.
+  // If the microphone is refused or fails, it does not retry on its own: the button below does.
+  const { stop, start } = mic;
   useEffect(() => {
     if (!active) stop();
-  }, [active, stop]);
+    else if (mic.status === 'idle') start();
+  }, [active, mic.status, stop, start]);
 
   useEffect(() => {
     if (mic.status !== 'listening') {
@@ -105,30 +127,49 @@ export default function Tuner({ active }: { active: boolean }) {
       ? 'Play a note'
       : mic.status === 'starting'
         ? 'Starting…'
-        : 'Tap Start, then play a note';
+        : 'Microphone is off';
 
   return (
     <View style={{ gap: 22 }}>
-      <View style={{ flexDirection: 'row', gap: 8 }}>
-        {(['chromatic', 'guitar'] as Mode[]).map((m) => (
-          <TouchableOpacity
-            key={m}
-            onPress={() => setMode(m)}
-            style={{
-              flex: 1,
-              height: 44,
-              borderRadius: radius.md,
-              alignItems: 'center',
-              justifyContent: 'center',
-              backgroundColor: mode === m ? colors.accent : colors.surface,
-            }}
-          >
-            <Text style={{ fontSize: TYPE.body, color: mode === m ? colors.accent100 : colors.text }}>
-              {m === 'chromatic' ? 'Chromatic' : 'Guitar'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      <View style={{ flexDirection: 'row' }}>
+        <TouchableOpacity
+          onPress={() => setPickerOpen((o) => !o)}
+          accessibilityLabel={`Tuning: ${tuning.label}. Choose another`}
+          style={{
+            flex: 1,
+            height: 44,
+            borderRadius: radius.md,
+            flexDirection: 'row',
+            gap: 6,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: colors.surface,
+          }}
+        >
+          <Text numberOfLines={1} style={{ flexShrink: 1, fontSize: TYPE.body, color: colors.text }}>{tuning.label.split(' (')[0]}</Text>
+          <View style={{ transform: [{ rotate: pickerOpen ? '-90deg' : '90deg' }] }}>
+            <ChevronRightIcon color={colors.neutral500} size={ICON.small} />
+          </View>
+        </TouchableOpacity>
       </View>
+
+      {pickerOpen && (
+        <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, paddingVertical: 6 }}>
+          {TUNINGS.map((t) => {
+            const on = t.id === tuning.id;
+            return (
+              <TouchableOpacity
+                key={t.id}
+                onPress={() => chooseTuning(t.id)}
+                style={{ height: 44, paddingHorizontal: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+              >
+                <Text style={{ fontSize: TYPE.body, color: colors.text }}>{t.label}</Text>
+                {on && <Text style={{ fontSize: TYPE.body, color: colors.accent }}>{'✓'}</Text>}
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      )}
 
       <View style={{ alignItems: 'center', minHeight: 130, justifyContent: 'center' }}>
         <Text style={{ fontSize: 88, fontWeight: '500', lineHeight: 96, color: inTune ? colors.accent : colors.text }}>
@@ -178,9 +219,9 @@ export default function Tuner({ active }: { active: boolean }) {
         </View>
       </View>
 
-      {mode === 'guitar' && (
+      <View style={{ gap: 8 }}>
         <View style={{ flexDirection: 'row', gap: 8 }}>
-          {GUITAR_STRINGS.map((s) => {
+          {tuning.strings.map((s) => {
             const on = reading?.stringLabel === s.label;
             return (
               <View
@@ -200,19 +241,21 @@ export default function Tuner({ active }: { active: boolean }) {
             );
           })}
         </View>
-      )}
+        <Text style={{ fontSize: TYPE.tiny, color: colors.neutral500, textAlign: 'center' }}>{tuning.label}</Text>
+      </View>
 
       {!!mic.message && mic.status !== 'listening' && (
         <Text style={{ fontSize: TYPE.small, color: colors.neutral500, lineHeight: TYPE.small * 1.5 }}>{mic.message}</Text>
       )}
 
-      <TouchableOpacity
-        onPress={listening ? mic.stop : mic.start}
-        disabled={mic.status === 'starting'}
-        style={{ height: 56, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}
-      >
-        <Text style={{ fontSize: TYPE.body, fontWeight: '500', color: colors.accent100 }}>{listening ? 'Stop' : 'Start'}</Text>
-      </TouchableOpacity>
+      {(mic.status === 'denied' || mic.status === 'error' || mic.status === 'unavailable') && (
+        <TouchableOpacity
+          onPress={mic.start}
+          style={{ height: 56, borderRadius: radius.md, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Text style={{ fontSize: TYPE.body, fontWeight: '500', color: colors.accent100 }}>Try again</Text>
+        </TouchableOpacity>
+      )}
     </View>
   );
 }

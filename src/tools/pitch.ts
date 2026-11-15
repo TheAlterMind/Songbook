@@ -99,21 +99,60 @@ export function noteFromFrequency(frequency: number, a4 = 440): NoteInfo {
 
 export type GuitarString = { label: string; name: string; octave: number; frequency: number };
 
-/** Standard tuning, low to high. */
-export const GUITAR_STRINGS: GuitarString[] = [
-  { label: '6', name: 'E', octave: 2, frequency: 82.41 },
-  { label: '5', name: 'A', octave: 2, frequency: 110.0 },
-  { label: '4', name: 'D', octave: 3, frequency: 146.83 },
-  { label: '3', name: 'G', octave: 3, frequency: 196.0 },
-  { label: '2', name: 'B', octave: 3, frequency: 246.94 },
-  { label: '1', name: 'E', octave: 4, frequency: 329.63 },
+/** One string from its name, octave and MIDI note number (E2 is 40). Strings are numbered 6 (lowest) to 1. */
+function str(label: string, name: string, octave: number, midi: number): GuitarString {
+  return { label, name, octave, frequency: 440 * Math.pow(2, (midi - 69) / 12) };
+}
+
+export type Tuning = { id: string; label: string; strings: GuitarString[] };
+
+/** Six-string tunings, each listed from the lowest string to the highest. */
+export const TUNINGS: Tuning[] = [
+  {
+    id: 'standard',
+    label: 'Standard (E A D G B E)',
+    strings: [str('6', 'E', 2, 40), str('5', 'A', 2, 45), str('4', 'D', 3, 50), str('3', 'G', 3, 55), str('2', 'B', 3, 59), str('1', 'E', 4, 64)],
+  },
+  {
+    id: 'half-down',
+    label: 'E♭ (half step down)',
+    strings: [str('6', 'E♭', 2, 39), str('5', 'A♭', 2, 44), str('4', 'D♭', 3, 49), str('3', 'G♭', 3, 54), str('2', 'B♭', 3, 58), str('1', 'E♭', 4, 63)],
+  },
+  {
+    id: 'full-down',
+    label: 'D (full step down)',
+    strings: [str('6', 'D', 2, 38), str('5', 'G', 2, 43), str('4', 'C', 3, 48), str('3', 'F', 3, 53), str('2', 'A', 3, 57), str('1', 'D', 4, 62)],
+  },
+  {
+    id: 'drop-d',
+    label: 'Drop D',
+    strings: [str('6', 'D', 2, 38), str('5', 'A', 2, 45), str('4', 'D', 3, 50), str('3', 'G', 3, 55), str('2', 'B', 3, 59), str('1', 'E', 4, 64)],
+  },
+  {
+    id: 'dadgad',
+    label: 'DADGAD',
+    strings: [str('6', 'D', 2, 38), str('5', 'A', 2, 45), str('4', 'D', 3, 50), str('3', 'G', 3, 55), str('2', 'A', 3, 57), str('1', 'D', 4, 62)],
+  },
+  {
+    id: 'open-g',
+    label: 'Open G (D G D G B D)',
+    strings: [str('6', 'D', 2, 38), str('5', 'G', 2, 43), str('4', 'D', 3, 50), str('3', 'G', 3, 55), str('2', 'B', 3, 59), str('1', 'D', 4, 62)],
+  },
+  {
+    id: 'open-d',
+    label: 'Open D (D A D F♯ A D)',
+    strings: [str('6', 'D', 2, 38), str('5', 'A', 2, 45), str('4', 'D', 3, 50), str('3', 'F♯', 3, 54), str('2', 'A', 3, 57), str('1', 'D', 4, 62)],
+  },
 ];
 
-/** The guitar string nearest to a frequency, and how many cents the frequency is from it. */
-export function nearestGuitarString(frequency: number): { string: GuitarString; cents: number } {
-  let best = GUITAR_STRINGS[0];
+/** Standard tuning, low to high. */
+export const GUITAR_STRINGS: GuitarString[] = TUNINGS[0].strings;
+
+/** The string of a tuning nearest to a frequency, and how many cents the frequency is from it. */
+export function nearestGuitarString(frequency: number, strings: GuitarString[] = GUITAR_STRINGS): { string: GuitarString; cents: number } {
+  let best = strings[0];
   let bestAbs = Infinity;
-  for (const s of GUITAR_STRINGS) {
+  for (const s of strings) {
     const cents = 1200 * Math.log2(frequency / s.frequency);
     if (Math.abs(cents) < bestAbs) {
       bestAbs = Math.abs(cents);

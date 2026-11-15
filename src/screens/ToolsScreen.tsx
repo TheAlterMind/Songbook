@@ -38,7 +38,7 @@ export default function ToolsScreen() {
           style={{ flexDirection: 'row', alignItems: 'center', height: 48, gap: 6, alignSelf: 'flex-start' }}
         >
           <BackChevronIcon color={colors.accent} size={22} />
-          <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>{tool === 'metronome' ? 'Metronome' : 'Tuner'}</Text>
+          <Text style={{ fontSize: TYPE.title, fontWeight: '500', color: colors.text }}>{tool === 'metronome' ? 'Metronome' : 'Guitar tuner'}</Text>
         </TouchableOpacity>
       </View>
       {/* The bottom padding keeps the tool clear of the menu. */}
