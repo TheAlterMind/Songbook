@@ -1,40 +1,214 @@
 {
   "schemaVersion": 2,
-  "generatedAt": "2026-11-15T16:00:00.000Z",
+  "generatedAt": "2026-11-15T14:00:57.555Z",
   "title": "Design System: Songbook",
   "extensions": {
     "colorMeta": {
-      "violet-signal": { "role": "primary", "displayName": "Violet Signal", "canonical": "#8E71E6", "tonalRamp": ["#1c1530", "#2f2352", "#493a86", "#6450b8", "#8E71E6", "#ab94ee", "#c9b9f5", "#e7dffb"] },
-      "ink-on-violet": { "role": "primary", "displayName": "Ink on Violet", "canonical": "#0B0814", "tonalRamp": ["#05030a", "#0B0814", "#171226", "#251d3d", "#3a3060", "#554a85", "#7b70ad", "#a59cd0"] },
-      "violet-night": { "role": "primary", "displayName": "Violet Night", "canonical": "#322851", "tonalRamp": ["#0e0b17", "#1a1429", "#251d3d", "#322851", "#44366f", "#5b4a92", "#7a68b8", "#a193d6"] },
-      "stage-black": { "role": "neutral", "displayName": "Stage Black", "canonical": "#0E0B17", "tonalRamp": ["#050408", "#0E0B17", "#19181E", "#202023", "#2a2a2f", "#3C3B41", "#5a5960", "#98979D"] },
-      "control-grey": { "role": "neutral", "displayName": "Control Grey", "canonical": "#202023", "tonalRamp": ["#0E0B17", "#19181E", "#202023", "#2a2a2f", "#3C3B41", "#4f4e55", "#6c6b72", "#98979D"] },
-      "well-grey": { "role": "neutral", "displayName": "Well Grey", "canonical": "#19181E", "tonalRamp": ["#0E0B17", "#131219", "#19181E", "#202023", "#2a2a2f", "#3C3B41", "#55545b", "#98979D"] },
-      "divider-grey": { "role": "neutral", "displayName": "Divider Grey", "canonical": "#3C3B41", "tonalRamp": ["#19181E", "#202023", "#2a2a2f", "#3C3B41", "#4f4e55", "#68676e", "#85848a", "#98979D"] },
-      "page-white": { "role": "neutral", "displayName": "Page White", "canonical": "#E9E8EE", "tonalRamp": ["#3C3B41", "#5a5960", "#77767d", "#98979D", "#b4b3b9", "#cac9cf", "#dddce2", "#E9E8EE"] },
-      "quiet-grey": { "role": "neutral", "displayName": "Quiet Grey", "canonical": "#98979D", "tonalRamp": ["#3C3B41", "#4f4e55", "#68676e", "#7f7e85", "#98979D", "#aeadb3", "#c6c5cb", "#E9E8EE"] }
+      "violet-signal": {
+        "role": "primary",
+        "displayName": "Violet Signal",
+        "canonical": "#A78BFA",
+        "tonalRamp": [
+          "#1c1530",
+          "#2f2352",
+          "#493a86",
+          "#6450b8",
+          "#A78BFA",
+          "#ab94ee",
+          "#c9b9f5",
+          "#e7dffb"
+        ]
+      },
+      "ink-on-violet": {
+        "role": "primary",
+        "displayName": "Ink on Violet",
+        "canonical": "#0B0814",
+        "tonalRamp": [
+          "#05030a",
+          "#0B0814",
+          "#171226",
+          "#251d3d",
+          "#3a3060",
+          "#554a85",
+          "#7b70ad",
+          "#a59cd0"
+        ]
+      },
+      "violet-night": {
+        "role": "primary",
+        "displayName": "Violet Night",
+        "canonical": "#3A3158",
+        "tonalRamp": [
+          "#050408",
+          "#1a1429",
+          "#251d3d",
+          "#3A3158",
+          "#44366f",
+          "#5b4a92",
+          "#7a68b8",
+          "#a193d6"
+        ]
+      },
+      "stage-black": {
+        "role": "neutral",
+        "displayName": "Stage Black",
+        "canonical": "#050408",
+        "tonalRamp": [
+          "#050408",
+          "#050408",
+          "#1A191F",
+          "#212024",
+          "#2a2a2f",
+          "#3E3C42",
+          "#5a5960",
+          "#9A989E"
+        ]
+      },
+      "control-grey": {
+        "role": "neutral",
+        "displayName": "Control Grey",
+        "canonical": "#212024",
+        "tonalRamp": [
+          "#050408",
+          "#1A191F",
+          "#212024",
+          "#2a2a2f",
+          "#3E3C42",
+          "#4f4e55",
+          "#6c6b72",
+          "#9A989E"
+        ]
+      },
+      "well-grey": {
+        "role": "neutral",
+        "displayName": "Well Grey",
+        "canonical": "#1A191F",
+        "tonalRamp": [
+          "#050408",
+          "#131219",
+          "#1A191F",
+          "#212024",
+          "#2a2a2f",
+          "#3E3C42",
+          "#55545b",
+          "#9A989E"
+        ]
+      },
+      "divider-grey": {
+        "role": "neutral",
+        "displayName": "Divider Grey",
+        "canonical": "#3E3C42",
+        "tonalRamp": [
+          "#1A191F",
+          "#212024",
+          "#2a2a2f",
+          "#3E3C42",
+          "#4f4e55",
+          "#68676e",
+          "#85848a",
+          "#9A989E"
+        ]
+      },
+      "page-white": {
+        "role": "neutral",
+        "displayName": "Page White",
+        "canonical": "#EAE9EF",
+        "tonalRamp": [
+          "#3E3C42",
+          "#5a5960",
+          "#77767d",
+          "#9A989E",
+          "#b4b3b9",
+          "#cac9cf",
+          "#dddce2",
+          "#EAE9EF"
+        ]
+      },
+      "quiet-grey": {
+        "role": "neutral",
+        "displayName": "Quiet Grey",
+        "canonical": "#9A989E",
+        "tonalRamp": [
+          "#3E3C42",
+          "#4f4e55",
+          "#68676e",
+          "#7f7e85",
+          "#9A989E",
+          "#aeadb3",
+          "#c6c5cb",
+          "#EAE9EF"
+        ]
+      }
     },
     "typographyMeta": {
-      "title": { "displayName": "Title", "purpose": "Screen titles and the song title." },
-      "body": { "displayName": "Body", "purpose": "List rows, inputs and buttons." },
-      "label": { "displayName": "Label", "purpose": "Section headers, switch labels, quiet links." },
-      "small": { "displayName": "Small", "purpose": "Secondary lines, descriptions and hints." },
-      "tiny": { "displayName": "Tiny", "purpose": "Tags and small print." },
-      "lyrics": { "displayName": "Lyrics", "purpose": "The song itself; the largest, brightest text." },
-      "chords": { "displayName": "Chords", "purpose": "Bold monospace accent line above the words it belongs to." },
-      "tuner-note": { "displayName": "Tuner note", "purpose": "The one display size, for the note being played." }
+      "title": {
+        "displayName": "Title",
+        "purpose": "Screen titles and the song title."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "List rows, inputs and buttons."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Section headers, switch labels, quiet links."
+      },
+      "small": {
+        "displayName": "Small",
+        "purpose": "Secondary lines, descriptions and hints."
+      },
+      "tiny": {
+        "displayName": "Tiny",
+        "purpose": "Tags and small print."
+      },
+      "lyrics": {
+        "displayName": "Lyrics",
+        "purpose": "The song itself; the largest, brightest text."
+      },
+      "chords": {
+        "displayName": "Chords",
+        "purpose": "Bold monospace accent line above the words it belongs to."
+      },
+      "tuner-note": {
+        "displayName": "Tuner note",
+        "purpose": "The one display size, for the note being played."
+      }
     },
     "shadows": [
-      { "name": "floating-menu", "value": "0 6px 16px rgba(0,0,0,0.25)", "purpose": "Dropdown and overflow menus that float above the page." },
-      { "name": "switch-thumb", "value": "0 2px 2px rgba(0,0,0,0.2)", "purpose": "The small drop under the white switch thumb." }
+      {
+        "name": "floating-menu",
+        "value": "0 6px 16px rgba(0,0,0,0.25)",
+        "purpose": "Dropdown and overflow menus that float above the page."
+      },
+      {
+        "name": "switch-thumb",
+        "value": "0 2px 2px rgba(0,0,0,0.2)",
+        "purpose": "The small drop under the white switch thumb."
+      }
     ],
     "motion": [
-      { "name": "swipe-settle", "value": "160ms timing", "purpose": "A swiped song row slides open or closed." },
-      { "name": "beat-pulse", "value": "80ms out to 1.06-1.12x, 200ms back", "purpose": "The metronome ring on each beat; larger on beat one." },
-      { "name": "needle-glide", "value": "120ms timing", "purpose": "The tuner needle moving to a new reading." }
+      {
+        "name": "swipe-settle",
+        "value": "160ms timing",
+        "purpose": "A swiped song row slides open or closed."
+      },
+      {
+        "name": "beat-pulse",
+        "value": "80ms out to 1.06-1.12x, 200ms back",
+        "purpose": "The metronome ring on each beat; larger on beat one."
+      },
+      {
+        "name": "needle-glide",
+        "value": "120ms timing",
+        "purpose": "The tuner needle moving to a new reading."
+      }
     ],
     "breakpoints": [
-      { "name": "wide", "value": "1120px", "purpose": "From this width (700 x 16px) the app sits in a framed column up to 720px." }
+      {
+        "name": "wide",
+        "value": "1120px",
+        "purpose": "From this width (700 x 16px) the app sits in a framed column up to 720px."
+      }
     ]
   },
   "components": [
@@ -44,7 +218,7 @@
       "refersTo": "button-primary",
       "description": "The main action on a screen, such as Find lyrics.",
       "html": "<button class=\"ds-btn-primary\">Find lyrics</button>",
-      "css": ".ds-btn-primary { background: #8E71E6; color: #0B0814; height: 44px; padding: 0 20px; border: none; border-radius: 16px; font-size: 17px; width: 100%; cursor: pointer; transition: opacity .15s; } .ds-btn-primary:hover { opacity: .9; } .ds-btn-primary:active { opacity: .7; } .ds-btn-primary:focus-visible { outline: 2px solid #E9E8EE; outline-offset: 2px; }"
+      "css": ".ds-btn-primary { background: #A78BFA; color: #0B0814; height: 44px; padding: 0 20px; border: none; border-radius: 16px; font-size: 17px; width: 100%; cursor: pointer; transition: opacity .15s; } .ds-btn-primary:hover { opacity: .9; } .ds-btn-primary:active { opacity: .7; } .ds-btn-primary:focus-visible { outline: 2px solid #EAE9EF; outline-offset: 2px; }"
     },
     {
       "name": "Tonal Button",
@@ -52,7 +226,7 @@
       "refersTo": "button-tonal",
       "description": "A secondary action, such as Paste lyrics or Sync now.",
       "html": "<button class=\"ds-btn-tonal\">Paste lyrics</button>",
-      "css": ".ds-btn-tonal { background: #19181E; color: #E9E8EE; padding: 11px 16px; border: none; border-radius: 16px; font-size: 17px; width: 100%; cursor: pointer; transition: opacity .15s; } .ds-btn-tonal:hover { opacity: .9; } .ds-btn-tonal:active { opacity: .7; } .ds-btn-tonal:focus-visible { outline: 2px solid #8E71E6; outline-offset: 2px; }"
+      "css": ".ds-btn-tonal { background: #1A191F; color: #EAE9EF; padding: 11px 16px; border: none; border-radius: 16px; font-size: 17px; width: 100%; cursor: pointer; transition: opacity .15s; } .ds-btn-tonal:hover { opacity: .9; } .ds-btn-tonal:active { opacity: .7; } .ds-btn-tonal:focus-visible { outline: 2px solid #A78BFA; outline-offset: 2px; }"
     },
     {
       "name": "Song Card",
@@ -60,7 +234,7 @@
       "refersTo": "list-row",
       "description": "A song in the library: cover, title, artist and the key as an accent tag.",
       "html": "<div class=\"ds-card\"><div class=\"ds-cover\"></div><div class=\"ds-card-text\"><div class=\"ds-card-title\">Fragile</div><div class=\"ds-card-sub\">Sting</div><div class=\"ds-card-tags\"><span class=\"ds-tag ds-tag-accent\">Em</span><span class=\"ds-tag\">Pop</span><span class=\"ds-tag\">1987</span></div></div></div>",
-      "css": ".ds-card { display: flex; gap: 12px; align-items: center; background: #202023; border-radius: 16px; padding: 12px; color: #E9E8EE; } .ds-cover { width: 64px; height: 64px; border-radius: 12px; background: #3C3B41; flex: none; } .ds-card-text { min-width: 0; } .ds-card-title { font-size: 17px; font-weight: 500; } .ds-card-sub { font-size: 13px; color: #98979D; margin-top: 2px; } .ds-card-tags { display: flex; gap: 6px; margin-top: 6px; } .ds-tag { background: #19181E; color: #98979D; font-size: 12px; padding: 2px 8px; border-radius: 16px; } .ds-tag-accent { background: #322851; color: #8E71E6; }"
+      "css": ".ds-card { display: flex; gap: 12px; align-items: center; background: #212024; border-radius: 16px; padding: 12px; color: #EAE9EF; } .ds-cover { width: 64px; height: 64px; border-radius: 12px; background: #3E3C42; flex: none; } .ds-card-text { min-width: 0; } .ds-card-title { font-size: 17px; font-weight: 500; } .ds-card-sub { font-size: 13px; color: #9A989E; margin-top: 2px; } .ds-card-tags { display: flex; gap: 6px; margin-top: 6px; } .ds-tag { background: #1A191F; color: #9A989E; font-size: 12px; padding: 2px 8px; border-radius: 16px; } .ds-tag-accent { background: #3A3158; color: #A78BFA; }"
     },
     {
       "name": "Tag",
@@ -68,7 +242,7 @@
       "refersTo": "tag",
       "description": "Small facts on a song card. The key uses the accent variant.",
       "html": "<span class=\"ds-chip\">Pop</span> <span class=\"ds-chip ds-chip-accent\">Em</span>",
-      "css": ".ds-chip { display: inline-block; background: #19181E; color: #98979D; font-size: 12px; padding: 3px 9px; border-radius: 16px; } .ds-chip-accent { background: #322851; color: #8E71E6; }"
+      "css": ".ds-chip { display: inline-block; background: #1A191F; color: #9A989E; font-size: 12px; padding: 3px 9px; border-radius: 16px; } .ds-chip-accent { background: #3A3158; color: #A78BFA; }"
     },
     {
       "name": "Text Field",
@@ -76,7 +250,7 @@
       "refersTo": "list-row",
       "description": "Search, new collection name and metadata fields.",
       "html": "<input class=\"ds-input\" placeholder=\"New collection name\" />",
-      "css": ".ds-input { background: #202023; color: #E9E8EE; border: none; border-radius: 16px; padding: 10px 12px; font-size: 17px; width: 100%; box-sizing: border-box; } .ds-input::placeholder { color: #98979D; } .ds-input:focus-visible { outline: 2px solid #8E71E6; outline-offset: 0; }"
+      "css": ".ds-input { background: #212024; color: #EAE9EF; border: none; border-radius: 16px; padding: 10px 12px; font-size: 17px; width: 100%; box-sizing: border-box; } .ds-input::placeholder { color: #9A989E; } .ds-input:focus-visible { outline: 2px solid #A78BFA; outline-offset: 0; }"
     },
     {
       "name": "Bottom Menu",
@@ -84,7 +258,7 @@
       "refersTo": "add-button",
       "description": "Library, Collections, the raised add button, the dice and Settings.",
       "html": "<nav class=\"ds-nav\"><span class=\"ds-nav-i ds-nav-on\"></span><span class=\"ds-nav-i\"></span><span class=\"ds-nav-add\"><svg viewBox=\"0 0 24 24\" width=\"28\" height=\"28\"><path d=\"M12 5v14M5 12h14\" stroke=\"#0B0814\" stroke-width=\"2.4\" stroke-linecap=\"round\" fill=\"none\"/></svg></span><span class=\"ds-nav-i\"></span><span class=\"ds-nav-i\"></span></nav>",
-      "css": ".ds-nav { position: relative; display: flex; justify-content: space-around; align-items: center; height: 44px; background: #202023; margin-top: 28px; } .ds-nav-i { width: 22px; height: 22px; border-radius: 6px; background: #98979D; opacity: .8; } .ds-nav-on { background: #8E71E6; opacity: 1; } .ds-nav-add { position: absolute; left: 50%; top: -28px; margin-left: -34px; width: 68px; height: 68px; border-radius: 50%; background: #8E71E6; border: 4px solid #0E0B17; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }"
+      "css": ".ds-nav { position: relative; display: flex; justify-content: space-around; align-items: center; height: 44px; background: #212024; margin-top: 28px; } .ds-nav-i { width: 22px; height: 22px; border-radius: 6px; background: #9A989E; opacity: .8; } .ds-nav-on { background: #A78BFA; opacity: 1; } .ds-nav-add { position: absolute; left: 50%; top: -28px; margin-left: -34px; width: 68px; height: 68px; border-radius: 50%; background: #A78BFA; border: 4px solid #050408; box-sizing: border-box; display: flex; align-items: center; justify-content: center; }"
     },
     {
       "name": "Text Size Control",
@@ -92,27 +266,43 @@
       "refersTo": "button-tonal",
       "description": "The joined small and large A on the song screen.",
       "html": "<div class=\"ds-size\"><button class=\"ds-size-b\" style=\"font-size:13px\">A</button><span class=\"ds-size-d\"></span><button class=\"ds-size-b\" style=\"font-size:22px\">A</button></div>",
-      "css": ".ds-size { display: inline-flex; align-items: center; border: 1px solid #3C3B41; border-radius: 16px; overflow: hidden; } .ds-size-b { width: 112px; height: 44px; background: transparent; border: none; color: #8E71E6; font-weight: 600; cursor: pointer; } .ds-size-b:hover { background: #19181E; } .ds-size-b:focus-visible { outline: 2px solid #8E71E6; outline-offset: -2px; } .ds-size-d { width: 1px; align-self: stretch; background: #3C3B41; }"
+      "css": ".ds-size { display: inline-flex; align-items: center; border: 1px solid #3E3C42; border-radius: 16px; overflow: hidden; } .ds-size-b { width: 112px; height: 44px; background: transparent; border: none; color: #A78BFA; font-weight: 600; cursor: pointer; } .ds-size-b:hover { background: #1A191F; } .ds-size-b:focus-visible { outline: 2px solid #A78BFA; outline-offset: -2px; } .ds-size-d { width: 1px; align-self: stretch; background: #3E3C42; }"
     }
   ],
   "narrative": {
-    "northStar": "The Music Stand",
-    "overview": "A music stand does one job: it holds the page still, at the right height, so the player can look at the music and not at the stand. Songbook is built the same way. Screens are flat and quiet, the lyrics are the brightest and largest thing on the page, and every control either sits where a thumb already is or steps out of the way while you read. The mood is quietly confident: few elements, each clearly purposeful, with one violet accent marking what you can act on.",
+    "northStar": "The Stage Light",
+    "overview": "A dark room with one light on what matters. Songbook's page is nearly black, and the only things lit are the song you are about to play and the controls you can press. The library is plain lines in the dark; the song you played last is the one lit card at the top; the lyrics, once open, are the brightest and largest thing on the screen. The mood is quietly confident, with one violet accent marking what you can act on.",
     "keyCharacteristics": [
-      "Flat tonal surfaces; depth comes from stepping between greys, not from shadows.",
+      "A nearly black page; depth comes from stepping between greys and from one lit card, not from shadows.",
       "One violet accent, on actions and the current state only.",
       "One 16px corner on everything except the round add button and switch.",
       "Large, calm type for lyrics; small, quiet type for everything around them.",
       "Controls move out of the way while reading, and full screen leaves only the way back."
     ],
     "rules": [
-      { "name": "The One Voice Rule", "body": "The accent marks what can be pressed or what is current. If a screen has more than a handful of accent elements, something that should be grey has been coloured.", "section": "colors" },
-      { "name": "The Step-Down Rule", "body": "Each layer is one grey step from the one behind it: Stage Black, then Control Grey, then Well Grey. Tags and tonal buttons sit below the surface they are on, not above it.", "section": "colors" },
-      { "name": "The Words First Rule", "body": "The lyric is the largest and brightest text on any screen it appears on. Nothing around it is larger or higher in contrast.", "section": "typography" },
-      { "name": "The Flat-By-Default Rule", "body": "Surfaces are flat at rest. A shadow appears only on something that floats above the page (a menu, a thumb), never to make a card look raised.", "section": "elevation" }
+      {
+        "name": "The One Voice Rule",
+        "body": "The accent marks what can be pressed or what is current. If a screen has more than a handful of accent elements, something that should be grey has been coloured.",
+        "section": "colors"
+      },
+      {
+        "name": "The Step-Down Rule",
+        "body": "Each layer is one grey step from the one behind it: Stage Black, then Control Grey, then Well Grey. Tags and tonal buttons sit below the surface they are on, not above it. The only lit surface on a list screen is the song that is about to be played.",
+        "section": "colors"
+      },
+      {
+        "name": "The Words First Rule",
+        "body": "The lyric is the largest and brightest text on any screen it appears on. Nothing around it is larger or higher in contrast.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat-By-Default Rule",
+        "body": "Surfaces are flat at rest. A shadow appears only on something that floats above the page (a menu, a thumb), never to make a card look raised.",
+        "section": "elevation"
+      }
     ],
     "dos": [
-      "Do keep the page Stage Black and step surfaces up in grey (Control Grey, then Well Grey).",
+      "Do keep the page Stage Black and light only the song you are about to play (the last-played card) and what can be pressed.",
       "Do use Violet Signal only for things you can act on or the current state.",
       "Do use the 16px corner everywhere, and fully round shapes only for circular buttons and the switch.",
       "Do keep touch targets at 44px or larger, and put frequent actions in the lower half of the screen.",
@@ -121,6 +311,7 @@
     ],
     "donts": [
       "Don't add shadows to cards or buttons to make them look raised.",
+      "Don't put library songs back on grey cards: the list is plain lines in the dark.",
       "Don't introduce a second accent colour next to the chosen one.",
       "Don't make any text on a song screen larger or higher in contrast than the lyrics.",
       "Don't put an action behind a gesture alone: every swipe or double tap needs an on-screen route.",

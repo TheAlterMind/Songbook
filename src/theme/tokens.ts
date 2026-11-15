@@ -4,7 +4,7 @@ import { Platform, StatusBar } from 'react-native';
 // tinted with the accent, flat grey surfaces and one 16px corner radius everywhere.
 
 export const ACCENT_OPTIONS = [
-  { label: 'Violet', value: '#8E71E6' },
+  { label: 'Violet', value: '#A78BFA' },
   { label: 'Teal', value: '#2FB6A0' },
   { label: 'Amber', value: '#D89C46' },
   { label: 'Coral', value: '#EA6A50' },
@@ -41,9 +41,9 @@ export function darkColors(accent: string): Colors {
   const track = tint(0x38, accent);
   const well = tint(0x13, accent);
   return {
-    bg: tint(0x00, accent, 0.1), // 90% black + 10% accent
+    bg: tint(0x00, accent, 0.03), // Stage Light: 97% black + 3% accent
     surface: control,
-    menuBg: control,
+    menuBg: tint(0x0c, accent, 0.05), // darker than the cards, so only the song and the controls are lit
     well,
     text: tint(0xee, accent),
     divider: track,
@@ -52,7 +52,7 @@ export function darkColors(accent: string): Colors {
     neutral800: well,
     accent100: '#0B0814',
     accent800: tint(0x00, accent, 0.35),
-    outer: tint(0x00, accent, 0.1),
+    outer: tint(0x00, accent, 0.03),
     accent,
   };
 }

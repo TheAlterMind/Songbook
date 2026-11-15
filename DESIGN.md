@@ -1,16 +1,16 @@
 ---
 name: Songbook
-description: A calm, flat, violet-on-near-black songbook that holds the song steady while you play.
+description: A near-black songbook with one violet light on the song that matters.
 colors:
-  violet-signal: "#8E71E6"
+  violet-signal: "#A78BFA"
   ink-on-violet: "#0B0814"
-  violet-night: "#322851"
-  stage-black: "#0E0B17"
-  control-grey: "#202023"
-  well-grey: "#19181E"
-  divider-grey: "#3C3B41"
-  page-white: "#E9E8EE"
-  quiet-grey: "#98979D"
+  violet-night: "#3A3158"
+  stage-black: "#050408"
+  control-grey: "#212024"
+  well-grey: "#1A191F"
+  divider-grey: "#3E3C42"
+  page-white: "#EAE9EF"
+  quiet-grey: "#9A989E"
 typography:
   title:
     fontFamily: "system-ui, Roboto, sans-serif"
@@ -100,14 +100,14 @@ components:
 
 ## Overview
 
-**Creative North Star: "The Music Stand"**
+**Creative North Star: "The Stage Light"**
 
-A music stand does one job: it holds the page still, at the right height, so the player can look at the music and not at the stand. Songbook is built the same way. Screens are flat and quiet, the lyrics are the brightest and largest thing on the page, and every control either sits where a thumb already is or steps out of the way while you read.
+A dark room with one light on what matters. Songbook's page is nearly black, and the only things lit are the song you are about to play and the controls you can press. The library is plain lines in the dark; the song you played last is the one lit card at the top; the lyrics, once open, are the brightest and largest thing on the screen. Every control either sits where a thumb already is or steps out of the way while you read.
 
-The mood is quietly confident: few elements, each clearly purposeful, with no ornament to look at between songs. One violet accent marks the things you can act on, and everything else is a step of near-black or grey. The system came from the owner's Sitness app and is kept the same on the phone, the web and the Windows desktop.
+The mood is quietly confident: few elements, each clearly purposeful, with no ornament to look at between songs. One violet accent marks the things you can act on, and everything else is a step of near-black or grey. The system grew from the owner's Sitness app (the Music Stand direction) and was moved to this darker, more theatrical version; it is kept the same on the phone, the web and the Windows desktop.
 
 **Key Characteristics:**
-- Flat tonal surfaces; depth comes from stepping between greys, not from shadows.
+- A nearly black page; depth comes from stepping between greys and from one lit card, not from shadows.
 - One violet accent, on actions and the current state only.
 - One 16px corner on everything except the round add button and switch.
 - Large, calm type for lyrics; small, quiet type for everything around them.
@@ -118,24 +118,25 @@ The mood is quietly confident: few elements, each clearly purposeful, with no or
 A near-black page tinted with violet, flat grey surfaces a step above it, and a single violet accent.
 
 ### Primary
-- **Violet Signal** (#8E71E6): the only accent. Buttons, the add button, active tab icons, selected tags, links like "Cancel" and "Got it", the in-tune needle and the pulsing tap ring on the beat. The app lets the user switch it to Teal (#2FB6A0), Amber (#D89C46) or Coral (#EA6A50); every other colour is tinted 5-10% with whichever accent is chosen.
+- **Violet Signal** (#A78BFA): the only accent. Buttons, the add button, active tab icons, selected tags, links like "Cancel" and "Got it", the in-tune needle and the pulsing tap ring on the beat. The app lets the user switch it to Teal (#2FB6A0), Amber (#D89C46) or Coral (#EA6A50); every other colour is tinted 5-10% with whichever accent is chosen.
 - **Ink on Violet** (#0B0814): text and icons drawn on top of the accent.
-- **Violet Night** (#322851): the accent's deep tint, used behind accent-coloured tags and the in-tune zone on the tuner bar.
+- **Violet Night** (#3A3158): the accent's deep tint, used behind accent-coloured tags and the in-tune zone on the tuner bar.
 
 ### Neutral
-- **Stage Black** (#0E0B17): the page behind everything (90% black, 10% accent).
-- **Control Grey** (#202023): cards, list rows, sheets and the bottom menu. The step above the page.
-- **Well Grey** (#19181E): tags and tonal buttons. The step below the cards, so tags sink into them instead of floating.
-- **Divider Grey** (#3C3B41): borders, slider tracks, the text-size pill outline and the off switch track.
-- **Page White** (#E9E8EE): primary text.
-- **Quiet Grey** (#98979D): secondary text, inactive icons, metadata.
+- **Stage Black** (#050408): the page behind everything (97% black, 3% accent).
+- **Control Grey** (#212024): cards, sheets and menus (Settings, collections, dialogs). The step above the page. Library songs are not on it: they sit directly on the page.
+- **Bar Black** (derived, about #141218): the bottom menu, one step above the page and below the cards, with a Well Grey hairline along its top edge.
+- **Well Grey** (#1A191F): tags and tonal buttons. The step below the cards, so tags sink into them instead of floating.
+- **Divider Grey** (#3E3C42): borders, slider tracks, the text-size pill outline and the off switch track.
+- **Page White** (#EAE9EF): primary text.
+- **Quiet Grey** (#9A989E): secondary text, inactive icons, metadata.
 
 A light theme exists for daytime: page #F4F6F7, surfaces #FFFFFF, wells #E8EEF0, text #111A1F, secondary text #5F6E79, dividers #DEE6E9, accent tint #E9E3FB. Dark is the default and the design reference; the light palette follows the same roles.
 
 ### Named Rules
 **The One Voice Rule.** The accent marks what can be pressed or what is current. If a screen has more than a handful of accent elements, something that should be grey has been coloured.
 
-**The Step-Down Rule.** Each layer is one grey step from the one behind it: Stage Black, then Control Grey, then Well Grey. Tags and tonal buttons sit below the surface they are on, not above it.
+**The Step-Down Rule.** Each layer is one grey step from the one behind it: Stage Black, then Control Grey, then Well Grey. Tags and tonal buttons sit below the surface they are on, not above it. The only lit surface on a list screen is the song that is about to be played.
 
 ## Typography
 
@@ -158,7 +159,7 @@ A light theme exists for daytime: page #F4F6F7, surfaces #FFFFFF, wells #E8EEF0,
 
 ## Layout
 
-A single column on the phone, framed and centred on wide windows (up to 720px). Screen content has an 18-20px side margin; lists use an 8px gap between cards; cards pad 11-14px inside. The top of every screen clears the status bar by 8px.
+A single column on the phone, framed and centred on wide windows (up to 720px). Screen content has an 18-20px side margin. The Library is plain rows separated by 1px hairlines, with the last-played song as a single lit card above them; other lists (collections, Settings) use cards with an 8px gap and 11-14px of inner padding. The top of every screen clears the status bar by 8px.
 
 The bottom menu is 44px tall with a round add button rising 28px above it. Header buttons are 44px square, and round buttons (the dice, the metronome heads) are 56-68px. Tap targets are never smaller than 44px.
 
@@ -193,7 +194,8 @@ One corner radius: 16px, on cards, list rows, buttons, inputs, sheets, tags and 
 - **Shadow Strategy:** none; see Elevation.
 - **Border:** none.
 - **Internal Padding:** 12px (artist and details views), 11px (name view).
-- A song card has a cover (36px in the name view, 64px otherwise), the title in 500, and quieter lines below. Swiping a card right reveals an accent "Add to collection" button; swiping left reveals a red "Delete" button.
+- A library row has a cover (36px in the name view, 64px otherwise), the title in 500 and quieter lines below, on the page itself with a Well Grey hairline above it. Swiping a row right reveals an accent "Add to collection" button; swiping left reveals a red "Delete" button.
+- **Last played card** (the signature component): the most recently opened song as one larger card in Violet Night with a 1px Violet Signal edge, a 52px cover, an 18px title, the artist and the key as an accent tag.
 
 ### Inputs / Fields
 - **Style:** Control Grey fill, 16px corners, 10px vertical and 12px horizontal padding, Page White text with Quiet Grey placeholder.
@@ -210,7 +212,7 @@ One corner radius: 16px, on cards, list rows, buttons, inputs, sheets, tags and 
 ## Do's and Don'ts
 
 ### Do:
-- **Do** keep the page Stage Black and step surfaces up in grey (Control Grey, then Well Grey).
+- **Do** keep the page Stage Black and light only the song you are about to play (the last-played card) and what can be pressed.
 - **Do** use Violet Signal only for things you can act on or the current state.
 - **Do** use the 16px corner everywhere, and fully round shapes only for circular buttons and the switch.
 - **Do** keep touch targets at 44px or larger, and put frequent actions in the lower half of the screen.
@@ -219,6 +221,7 @@ One corner radius: 16px, on cards, list rows, buttons, inputs, sheets, tags and 
 
 ### Don't:
 - **Don't** add shadows to cards or buttons to make them look raised.
+- **Don't** put library songs back on grey cards: the list is plain lines in the dark.
 - **Don't** introduce a second accent colour next to the chosen one.
 - **Don't** make any text on a song screen larger or higher in contrast than the lyrics.
 - **Don't** put an action behind a gesture alone: every swipe or double tap needs an on-screen route.

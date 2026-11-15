@@ -99,6 +99,15 @@ export default function LibraryScreen() {
     [songs, matches, opened, settings.sortBy, settings.sortDir]
   );
 
+  // Stage Light: the song you opened most recently is the one lit card at the top; the rest are plain lines.
+  const lastPlayed = useMemo(() => {
+    if (query.trim()) return null;
+    let best: Song | null = null;
+    for (const s of sorted) if (s.openedAt && (!best || (s.openedAt as number) > (best.openedAt as number))) best = s;
+    return best;
+  }, [sorted, query]);
+  const listData = useMemo(() => (lastPlayed ? sorted.filter((s) => s.id !== lastPlayed.id) : sorted), [sorted, lastPlayed]);
+
   const toggleSortDir = () => updateSettings({ sortDir: settings.sortDir === 'asc' ? 'desc' : 'asc' });
   // The card size button cycles: name only, then name and artist, then every detail.
   const toggleViewMode = () => {
@@ -208,12 +217,47 @@ export default function LibraryScreen() {
       </View>
 
       <FlatList
-        data={sorted}
+        data={listData}
         keyExtractor={(item) => String(item.id)}
-        contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: 18, gap: 8 }}
+        contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: 18 }}
         ListHeaderComponent={
-          swipeHint && sorted.length > 0 && !query.trim() ? (
-            <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, gap: 10 }}>
+          <>
+          {lastPlayed && (
+            <View>
+              <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginBottom: 8 }}>Last played</Text>
+              <TouchableOpacity
+                onPress={() => navigation.navigate('Detail', { songId: lastPlayed.id })}
+                style={{
+                  backgroundColor: colors.accent800,
+                  borderColor: colors.accent,
+                  borderWidth: 1,
+                  borderRadius: radius.md,
+                  padding: 14,
+                  marginBottom: 12,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  gap: 12,
+                }}
+              >
+                <Cover uri={lastPlayed.cover} size={52} title={lastPlayed.title} />
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={{ fontSize: TYPE.title - 4, fontWeight: '500', color: colors.text }} numberOfLines={1}>
+                    {lastPlayed.title}
+                  </Text>
+                  <Text style={{ fontSize: TYPE.small, color: colors.neutral500, marginTop: 2 }} numberOfLines={1}>
+                    {lastPlayed.artist}
+                  </Text>
+                  {!!lastPlayed.key && (
+                    <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                      <Tag label={lastPlayed.key} accent colors={colors} radius={radius} />
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+            </View>
+          )}
+          {swipeHint && sorted.length > 0 && !query.trim() ? (
+            <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, gap: 10, marginBottom: 12 }}>
               <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.text }}>
                 Swipe a song right to add it to a collection, or left to delete it. Press and hold shows the delete button too.
               </Text>
@@ -221,10 +265,11 @@ export default function LibraryScreen() {
                 <Text style={{ fontSize: TYPE.label, color: colors.accent, fontWeight: '600' }}>Got it</Text>
               </TouchableOpacity>
             </View>
-          ) : null
+          ) : null}
+          </>
         }
         ListEmptyComponent={
-          loadError ? (
+          sorted.length > 0 ? null : loadError ? (
             <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, gap: 10, marginTop: 24 }}>
               <Text style={{ fontSize: TYPE.body, color: colors.text }}>Your library can't be opened here</Text>
               <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.neutral500 }}>
@@ -263,7 +308,7 @@ export default function LibraryScreen() {
           )
         }
         renderItem={({ item }) => (
-          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} leftAction={leftActionFor(item)} rightActions={rightActionsFor(item)} radius={radius.md}>
+          <SwipeRow ref={(h) => { rowRefs.current[item.id as number] = h; }} leftAction={leftActionFor(item)} rightActions={rightActionsFor(item)} radius={0}>
           <TouchableOpacity
             onPress={() => {
               if (tapClosedSwipe.current) {
@@ -273,7 +318,7 @@ export default function LibraryScreen() {
               navigation.navigate('Detail', { songId: item.id });
             }}
             onLongPress={() => rowRefs.current[item.id as number]?.open()}
-            style={[styles.row, { backgroundColor: colors.surface, borderRadius: radius.md, padding: showArtist ? 12 : 11 }]}
+            style={[styles.row, { backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.well, paddingVertical: showArtist ? 12 : 11, paddingHorizontal: 2 }]}
           >
             <Cover uri={item.cover} size={showArtist ? 64 : 36} title={item.title} />
             <View style={{ flex: 1, minWidth: 0 }}>

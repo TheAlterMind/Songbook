@@ -63,7 +63,7 @@ export default function TabBar({ state, descriptors, navigation }: BottomTabBarP
   return (
     // The transparent top part leaves room for the + button, and keeps its whole area tappable.
     <View pointerEvents="box-none" style={{ height: LAYOUT.tabProtrude + LAYOUT.tabBar + insets.bottom }}>
-      <View style={[styles.bar, { height: LAYOUT.tabBar + insets.bottom, backgroundColor: colors.menuBg }]} />
+      <View style={[styles.bar, { height: LAYOUT.tabBar + insets.bottom, backgroundColor: colors.menuBg, borderTopWidth: 1, borderTopColor: colors.well }]} />
       <View style={[styles.row, { top: LAYOUT.tabProtrude, height: LAYOUT.tabBar }]}>
         {screenTab('Library')}
         {screenTab('Collections')}
