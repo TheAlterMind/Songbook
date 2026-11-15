@@ -9,6 +9,7 @@ import { TYPE, ICON, LAYOUT } from '../theme/tokens';
 import { getSong, Song } from '../db/Database';
 import { deleteWithUndo } from '../utils/undoDelete';
 import { markOpened } from '../utils/lastOpened';
+import { hasSeenHint, markHintSeen } from '../utils/hints';
 import { useToast } from '../components/Toast';
 import { notify, errorText } from '../utils/notify';
 import { Switch } from '../components/Controls';
@@ -81,6 +82,25 @@ export default function DetailScreen() {
     setScrollable(true);
   };
   const lastTap = useRef(0);
+  // A one-time note about double-tap paging. It goes when it is used, dismissed, or after a few seconds.
+  const [pagingHint, setPagingHint] = useState(false);
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    hasSeenHint('song-paging').then((seen) => {
+      if (seen) return;
+      setPagingHint(true);
+      timer = setTimeout(() => {
+        setPagingHint(false);
+        markHintSeen('song-paging');
+      }, 9000);
+    });
+    return () => timer && clearTimeout(timer);
+  }, []);
+  const dismissPagingHint = () => {
+    setPagingHint(false);
+    markHintSeen('song-paging');
+  };
+
   const onLyricsTap = (e: GestureResponderEvent) => {
     const now = Date.now();
     if (now - lastTap.current > 320) {
@@ -88,6 +108,7 @@ export default function DetailScreen() {
       return;
     }
     lastTap.current = 0;
+    if (pagingHint) dismissPagingHint();
     // locationY is relative to whichever line was touched, so compare the screen position instead.
     const pageY = e.nativeEvent.pageY;
     const scrollTo = (back: boolean) => {
@@ -246,6 +267,18 @@ export default function DetailScreen() {
       )}
       </View>
 
+      {pagingHint && (
+        <TouchableOpacity
+          onPress={dismissPagingHint}
+          activeOpacity={0.9}
+          style={[styles.pagingHint, { backgroundColor: colors.surface, borderColor: colors.divider, bottom: Math.max(insets.bottom, 12) + 12 }]}
+        >
+          <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.text, textAlign: 'center' }}>
+            Double-tap the lower half to scroll a page down, the upper half to go back up.
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {full && (
         <TouchableOpacity
           onPress={() => setFull(false)}
@@ -331,6 +364,7 @@ const styles = StyleSheet.create({
   },
   menuItem: { height: 44, paddingHorizontal: 16, justifyContent: 'center' },
   toolbar: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 8, paddingBottom: 18 },
+  pagingHint: { position: 'absolute', left: 20, right: 20, borderWidth: 1, borderRadius: 16, paddingVertical: 12, paddingHorizontal: 16 },
   exitFull: {
     position: 'absolute',
     right: 12,

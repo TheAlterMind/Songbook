@@ -17,7 +17,32 @@ export async function getLastSyncedAt(): Promise<number | null> {
   }
 }
 
+const LAST_ERROR_KEY = 'songbook.sync.lastError';
+
+/** Why the last sync failed, or null when it worked (or has not run). Backed-up automatic syncs fail quietly, so Settings shows this. */
+export async function getLastSyncError(): Promise<string | null> {
+  try {
+    return await AsyncStorage.getItem(LAST_ERROR_KEY);
+  } catch {
+    return null;
+  }
+}
+
+/** Runs one sync and remembers whether it worked. Not being signed in is not a failure. */
 async function runOnce(interactive: boolean): Promise<number> {
+  try {
+    const count = await runSync(interactive);
+    AsyncStorage.removeItem(LAST_ERROR_KEY).catch(() => {});
+    return count;
+  } catch (e: any) {
+    if (e?.name !== 'NotSignedInError') {
+      AsyncStorage.setItem(LAST_ERROR_KEY, e?.message || 'Something went wrong.').catch(() => {});
+    }
+    throw e;
+  }
+}
+
+async function runSync(interactive: boolean): Promise<number> {
   const token = await getAccessToken(interactive);
   const remote = await downloadSnapshot(token);
   const merged = await mergeRemoteIntoLocal(remote);

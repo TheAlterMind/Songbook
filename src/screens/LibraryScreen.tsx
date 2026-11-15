@@ -11,6 +11,7 @@ import { useToast } from '../components/Toast';
 import SwipeRow, { SwipeRowHandle, closeOpenRow, isAnyRowOpen } from '../components/SwipeRow';
 import { sortSongs, SORT_OPTIONS, DATE_SORTS } from '../utils/sort';
 import { getOpenedMap } from '../utils/lastOpened';
+import { hasSeenHint, markHintSeen } from '../utils/hints';
 import { backfillCovers } from '../services/covers';
 import Cover from '../components/Cover';
 import { ExpandedViewIcon, CompactViewIcon, SquareIcon, SortUpIcon, SortDownIcon, StarIcon, SearchIcon } from '../components/Icons';
@@ -18,7 +19,7 @@ import { ExpandedViewIcon, CompactViewIcon, SquareIcon, SortUpIcon, SortDownIcon
 export default function LibraryScreen() {
   const navigation = useNavigation<any>();
   const { colors, radius, settings, updateSettings } = useTheme();
-  const { showUndo } = useToast();
+  const { showUndo, showMessage } = useToast();
   const rowRefs = useRef<Record<number, SwipeRowHandle | null>>({});
   // True when the touch that is happening closed a swipe, so the row under it should not open its song.
   const tapClosedSwipe = useRef(false);
@@ -32,6 +33,15 @@ export default function LibraryScreen() {
   const [groupX, setGroupX] = useState(0);
   const [labelBox, setLabelBox] = useState({ x: 0, w: 0 });
   const [matches, setMatches] = useState<Song[] | null>(null);
+  // A one-time card that says what swiping a song does. It stays until it is dismissed.
+  const [swipeHint, setSwipeHint] = useState(false);
+  useEffect(() => {
+    hasSeenHint('library-swipe').then((seen) => setSwipeHint(!seen));
+  }, []);
+  const dismissSwipeHint = () => {
+    setSwipeHint(false);
+    markHintSeen('library-swipe');
+  };
 
   const load = useCallback(async () => {
     try {
@@ -91,8 +101,12 @@ export default function LibraryScreen() {
 
   const toggleSortDir = () => updateSettings({ sortDir: settings.sortDir === 'asc' ? 'desc' : 'asc' });
   // The card size button cycles: name only, then name and artist, then every detail.
-  const toggleViewMode = () =>
-    updateSettings({ viewMode: settings.viewMode === 'name' ? 'artist' : settings.viewMode === 'artist' ? 'details' : 'name' });
+  const toggleViewMode = () => {
+    const next = settings.viewMode === 'name' ? 'artist' : settings.viewMode === 'artist' ? 'details' : 'name';
+    updateSettings({ viewMode: next });
+    // The icon alone does not say what the three states are, so say which one this is.
+    showMessage(next === 'name' ? 'Cards: name only' : next === 'artist' ? 'Cards: name and artist' : 'Cards: all details');
+  };
 
   const toggleFav = async (song: Song) => {
     await setFavorite(song.id as number, !song.favorite);
@@ -166,11 +180,12 @@ export default function LibraryScreen() {
           <>
             <Text numberOfLines={1} style={[styles.h1, { color: colors.text, flexShrink: 1 }]}>Songbook</Text>
             <View style={styles.tools} onLayout={(ev) => setGroupX(ev.nativeEvent.layout.x)}>
-              <TouchableOpacity onPress={() => setSearchOpen(true)} style={styles.iconBtn}>
+              <TouchableOpacity onPress={() => setSearchOpen(true)} accessibilityLabel="Search" style={styles.iconBtn}>
                 <SearchIcon color={colors.accent} size={ICON.button} strokeWidth={2} />
               </TouchableOpacity>
               <TouchableOpacity
                 onPress={() => setSortMenuOpen((o) => !o)}
+                accessibilityLabel={`Sort by ${sortLabel}`}
                 onLayout={(ev) => setLabelBox({ x: ev.nativeEvent.layout.x, w: ev.nativeEvent.layout.width })}
                 hitSlop={{ top: 10, bottom: 10, left: 2, right: 2 }}
                 style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 2, height: LAYOUT.iconButton, paddingHorizontal: 8 }}
@@ -178,7 +193,7 @@ export default function LibraryScreen() {
                 <Text numberOfLines={1} style={{ fontSize: TYPE.title, fontWeight: '400', color: colors.accent }}>{sortLabel}</Text>
                 {settings.sortDir === 'asc' ? <SortDownIcon color={colors.accent} size={20} /> : <SortUpIcon color={colors.accent} size={20} />}
               </TouchableOpacity>
-              <TouchableOpacity onPress={toggleViewMode} style={styles.iconBtn}>
+              <TouchableOpacity onPress={toggleViewMode} accessibilityLabel="Change card size" style={styles.iconBtn}>
                 {settings.viewMode === 'name' ? (
                   <CompactViewIcon color={colors.accent} size={ICON.button} />
                 ) : settings.viewMode === 'artist' ? (
@@ -196,11 +211,26 @@ export default function LibraryScreen() {
         data={sorted}
         keyExtractor={(item) => String(item.id)}
         contentContainerStyle={{ padding: 18, paddingTop: 15, paddingBottom: 18, gap: 8 }}
+        ListHeaderComponent={
+          swipeHint && sorted.length > 0 && !query.trim() ? (
+            <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 14, gap: 10 }}>
+              <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.text }}>
+                Swipe a song right to add it to a collection, or left to delete it. Press and hold shows the delete button too.
+              </Text>
+              <TouchableOpacity onPress={dismissSwipeHint} style={{ alignSelf: 'flex-end', paddingVertical: 4, paddingHorizontal: 8 }}>
+                <Text style={{ fontSize: TYPE.label, color: colors.accent, fontWeight: '600' }}>Got it</Text>
+              </TouchableOpacity>
+            </View>
+          ) : null
+        }
         ListEmptyComponent={
           loadError ? (
             <View style={{ backgroundColor: colors.surface, borderRadius: radius.md, padding: 16, gap: 10, marginTop: 24 }}>
               <Text style={{ fontSize: TYPE.body, color: colors.text }}>Your library can't be opened here</Text>
-              <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.neutral500 }}>{loadError}</Text>
+              <Text style={{ fontSize: TYPE.small, lineHeight: TYPE.small * 1.5, color: colors.neutral500 }}>
+                Your songs are safe; this screen just could not read them. Try again, and if it keeps happening, restart the app.
+              </Text>
+              <Text style={{ fontSize: TYPE.tiny, color: colors.neutral500 }}>Details: {loadError}</Text>
               <TouchableOpacity
                 onPress={load}
                 style={{ backgroundColor: colors.well, borderRadius: radius.md, paddingVertical: 10, alignItems: 'center' }}
@@ -277,7 +307,7 @@ export default function LibraryScreen() {
                 <StarIcon color={item.favorite ? colors.accent : colors.neutral500} filled={!!item.favorite} size={ICON.inline} />
               </TouchableOpacity>
             ) : (
-              !!item.key && <Tag label={item.key} colors={colors} radius={radius} />
+              !!item.key && <Tag label={item.key} accent colors={colors} radius={radius} />
             )}
           </TouchableOpacity>
           </SwipeRow>

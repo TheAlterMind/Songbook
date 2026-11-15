@@ -12,7 +12,17 @@ import ScreenHeader from '../components/ScreenHeader';
 import { FONT_CHOICES } from '../theme/fonts';
 import { confirmThen, notify } from '../utils/notify';
 import { isSignedIn, isSyncConfigured, NotSignedInError, signOut } from '../sync/googleAuth';
-import { getLastSyncedAt, syncNow } from '../sync/syncService';
+import { getLastSyncedAt, getLastSyncError, syncNow } from '../sync/syncService';
+
+/** "just now", "5 minutes ago", "2 hours ago", or the date for anything older than a day. */
+function ago(time: number): string {
+  const minutes = Math.round((Date.now() - time) / 60000);
+  if (minutes < 1) return 'just now';
+  if (minutes < 60) return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  return `on ${new Date(time).toLocaleDateString()}`;
+}
 
 type Sheet = null | 'accent' | 'theme' | 'font' | 'scale';
 
@@ -30,6 +40,7 @@ export default function SettingsScreen() {
   const [signedIn, setSignedIn] = useState(false);
   const [lastSynced, setLastSynced] = useState<number | null>(null);
   const [syncing, setSyncing] = useState(false);
+  const [syncError, setSyncError] = useState<string | null>(null);
   const syncConfigured = isSyncConfigured();
 
   useFocusEffect(
@@ -37,6 +48,7 @@ export default function SettingsScreen() {
       getAllSongs().then((s) => setSongCount(s.length));
       isSignedIn().then(setSignedIn);
       getLastSyncedAt().then(setLastSynced);
+      getLastSyncError().then(setSyncError);
     }, [])
   );
 
@@ -47,7 +59,9 @@ export default function SettingsScreen() {
       setSongCount(count);
       setSignedIn(true);
       setLastSynced(await getLastSyncedAt());
+      setSyncError(null);
     } catch (e: any) {
+      setSyncError(await getLastSyncError());
       // Closing the Google sign-in screen is not an error worth a dialog.
       if (!(e instanceof NotSignedInError)) notify('Sync failed', e?.message || 'Something went wrong.');
     } finally {
@@ -63,9 +77,11 @@ export default function SettingsScreen() {
 
   const syncDescription = !syncConfigured
     ? 'Not set up in this build. Add your Google client ID to .env.local and rebuild: see SYNC_SETUP.md.'
-    : lastSynced
-      ? `Last synced ${new Date(lastSynced).toLocaleString()}.`
-      : 'Keeps a copy of your songs in a hidden Drive folder and syncs it between your devices.';
+    : syncError
+      ? `The last sync failed: ${syncError} Tap Sync now to try again.${lastSynced ? ` Last successful sync ${ago(lastSynced)}.` : ''}`
+      : lastSynced
+        ? `Synced ${ago(lastSynced)}.`
+        : 'Keeps a copy of your songs in a hidden Drive folder and syncs it between your devices.';
 
   const onExport = async () => {
     try {
